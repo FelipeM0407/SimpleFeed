@@ -1,0 +1,95 @@
+# Compilados binários
+bin/
+obj/
+
+# Logs
+*.log
+logs/
+*.tlog
+
+# Configurações de usuário do Visual Studio Code
+.vscode/
+.vscode/settings.json
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de build locais
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Configurações locais do Visual Studio
+.vs/
+
+# Configurações temporárias
+*.swp
+*.tmp
+*.bak
+*.pid
+*.seed
+*.svd
+
+# Diretórios gerados pelo Rider/IDEA
+.idea/
+*.iml
+
+# Configuração de segredos do usuário (caso use DotNet User Secrets)
+secrets.json
+
+# Arquivos de build e publicações
+out/
+publish/
+
+# Arquivos de backup
+*.old
+*.orig
+*.bak
+
+# Configurações específicas do sistema operacional
+*.sqlite
+*.sqlite3
+*.db
+
+# Outros
+*.TestResults/
+TestResults/
+
+# Excluir qualquer pasta chamada "logs"
+**/logs/
+
+# Arquivos do pacote NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Cache do NuGet
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Arquivos gerados pelo SDK do .NET
+*.dbmdl
+*.jfm
+
+# Arquivos gerados pelo Rider/JetBrains
+.idea/
+*.ipr
+*.iws
+*.iml
+
+# Arquivos de configuração de diretórios locais
+directory.Build.props
+directory.Build.targets
+
+# Arquivos gerados pela migração de banco de dados
+Migrations/
+
+# Chave privada SSH (não suba suas chaves privadas para o Git)
+*.pem
+*.key
+
+# Arquivos de configuração gerados pelo docker
+docker-compose.override.yml

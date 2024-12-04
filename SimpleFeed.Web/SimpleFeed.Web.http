@@ -1,0 +1,6 @@
+@SimpleFeed.Web_HostAddress = http://localhost:5237
+
+GET {{SimpleFeed.Web_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
