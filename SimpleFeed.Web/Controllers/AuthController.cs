@@ -7,8 +7,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SimpleFeed.Domain.Entities;
+using SimpleFeed.Infrastructure.Persistence;
 using SimpleFeed.Web.Models.Auth;
 
 namespace SimpleFeed.Web.Controllers
@@ -20,14 +22,17 @@ namespace SimpleFeed.Web.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _context;
 
         public AuthController(UserManager<ApplicationUser> userManager,
                               SignInManager<ApplicationUser> signInManager,
-                              IConfiguration configuration)
+                              IConfiguration configuration,
+                              ApplicationDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
+            _context = context;
         }
 
         [HttpPost("register")]
@@ -36,20 +41,62 @@ namespace SimpleFeed.Web.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = new ApplicationUser
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                UserName = model.Email,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName
-            };
+                // Criar o usuário no Identity
+                var user = new ApplicationUser
+                {
+                    UserName = model.Email,
+                    Email = model.Email,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    PhoneNumber = model.PhoneNumber
+                };
 
-            var result = await _userManager.CreateAsync(user, model.Password);
+                var result = await _userManager.CreateAsync(user, model.Password);
 
-            if (!result.Succeeded)
-                return BadRequest(result.Errors);
+                if (!result.Succeeded)
+                    return BadRequest(result.Errors);
 
-            return Ok("User registered successfully.");
+                // Recuperar o usuário do banco de dados
+                var createdUser = await _userManager.FindByEmailAsync(user.Email);
+                if (createdUser == null)
+                    return StatusCode(500, "User creation failed unexpectedly.");
+
+                // Criar o registro do Client associado ao usuário
+                var client = new Client
+                {
+                    UserId = createdUser.Id,  // UserId agora é garantido
+                    PlanId = (int)model.Plan,
+                    Name = model.Name,
+                    Cpf = model.Cpf,
+                    Cnpj = model.Cnpj,
+                    ExpiryDate = model.ExpiryDate
+                };
+
+                _context.Clients.Add(client);
+                await _context.SaveChangesAsync();
+
+                // Confirmar a transação
+                await transaction.CommitAsync();
+
+                // Gerar o token JWT
+                var token = GenerateJwtToken(createdUser);
+
+                // Retornar o token para o cliente
+                return Ok(new { Token = token });
+            }
+            catch (DbUpdateException ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, $"Database update error: {ex.InnerException?.Message ?? ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
         }
 
 

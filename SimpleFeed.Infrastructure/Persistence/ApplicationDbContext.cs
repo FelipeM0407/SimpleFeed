@@ -10,17 +10,25 @@ namespace SimpleFeed.Infrastructure.Persistence
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-        {
-        }
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options) { }
+
+        public DbSet<Client> Clients { get; set; } // Adicionar o DbSet para Clients
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            // Configuração adicional para o Identity, se necessário
-            builder.Entity<ApplicationUser>().Property(u => u.FirstName).HasMaxLength(100).IsRequired();
-            builder.Entity<ApplicationUser>().Property(u => u.LastName).HasMaxLength(100).IsRequired();
+            // Mapeamento explícito para a tabela "clients"
+            builder.Entity<Client>(entity =>
+            {
+                entity.ToTable("clients"); // Nome da tabela no banco
+                entity.HasOne(c => c.User)
+                      .WithOne() // Relacionamento 1:1 com IdentityUser
+                      .HasForeignKey<Client>(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Cascade); // Excluir Client ao excluir User
+            });
         }
+
     }
 }
