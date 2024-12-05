@@ -2,15 +2,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Application.Services;
 using SimpleFeed.Domain.Entities;
 using SimpleFeed.Infrastructure.Persistence;
+using SimpleFeed.Infrastructure.Repositories;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configuração do DbContext para PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));  // Usando PostgreSQL
+    
 
 // Configurar o Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -39,8 +43,6 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
-
 // Configurar tempo de expiração de sessões
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -52,6 +54,12 @@ builder.Services.ConfigureApplicationCookie(options =>
         return Task.CompletedTask;
     };
 });
+
+builder.Services.AddScoped<IFormRepository>(provider =>
+    new FormRepository(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<FormService>();
+
 
 builder.Services.AddControllers();
 
@@ -91,7 +99,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-
 var app = builder.Build();
 
 // Configure o Swagger para o ambiente de desenvolvimento
@@ -104,7 +111,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
     });
 }
-
 
 app.UseRouting();
 app.UseAuthentication();

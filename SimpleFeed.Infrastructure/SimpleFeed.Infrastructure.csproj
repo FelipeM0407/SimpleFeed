@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SimpleFeed.Domain\SimpleFeed.Domain.csproj" />
+    <ProjectReference Include="..\SimpleFeed.Application\SimpleFeed.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
