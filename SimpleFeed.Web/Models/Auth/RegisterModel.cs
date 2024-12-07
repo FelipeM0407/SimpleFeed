@@ -28,7 +28,7 @@ namespace SimpleFeed.Web.Models.Auth
         public string PhoneNumber { get; set; } // Campo obrigatório para o telefone
 
         // Plano selecionado pelo usuário (valor do enum)
-        public PlanType Plan { get; set; } = PlanType.Free; // Padrão: Free
+        public Plans Plan { get; set; } = Plans.Free; // Padrão: Free
 
         // Campos opcionais para o Client
         public string? Name { get; set; }
