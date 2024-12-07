@@ -9,7 +9,7 @@ namespace SimpleFeed.Infrastructure.Repositories
     public class FormRepository : IFormRepository
     {
         private readonly string _connectionString;
-    
+
         public FormRepository(string connectionString)
         {
             _connectionString = connectionString;
@@ -20,7 +20,8 @@ namespace SimpleFeed.Infrastructure.Repositories
             var forms = new List<FormDashboardDto>();
 
             var query = @"
-                SELECT f.name AS FormName, 
+                SELECT f.id AS Id, 
+                    f.name AS FormName, 
                     COUNT(fe.Id) AS ResponseCount,
                     f.updated_at AS LastUpdated
                 FROM forms f
@@ -42,6 +43,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                         {
                             forms.Add(new FormDashboardDto
                             {
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
                                 FormName = reader["FormName"].ToString(),
                                 ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
                                 LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated"))

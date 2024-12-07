@@ -7,6 +7,7 @@ namespace SimpleFeed.Application.DTOs
 {
     public class FormDashboardDto
     {
+        public int Id {get; set;}
         public string FormName { get; set; }
         public int ResponseCount { get; set; }
         public DateTime LastUpdated { get; set; }

@@ -55,11 +55,17 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-builder.Services.AddScoped<IFormRepository>(provider =>
-    new FormRepository(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddSingleton(provider =>
+    builder.Configuration.GetConnectionString("DefaultConnection"));
+
+// Registrar repositórios
+builder.Services.AddScoped<IFormRepository, FormRepository>();
+builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+
+// Registrar serviços
 builder.Services.AddScoped<FormService>();
-
+builder.Services.AddScoped<FeedbackService>();
 
 builder.Services.AddControllers();
 

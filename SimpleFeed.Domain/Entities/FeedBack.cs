@@ -9,17 +9,11 @@ namespace SimpleFeed.Domain.Entities
     public class Feedback
     {
         public int Id { get; set; }
-
         public int ClientId { get; set; }
-
         public int FormId { get; set; }
-
-        [Required]
-        public string Answers { get; set; }  // Armazenará as respostas como JSON
-
+        public string Answers { get; set; } // JSON em formato de string
         public DateTime SubmittedAt { get; set; }
-
-        [MaxLength(50)]
-        public string IPAddress { get; set; }
+        public string IpAddress { get; set; }
+        public bool IsNew { get; set; } // Indica se o feedback ainda não foi visualizado
     }
 }
