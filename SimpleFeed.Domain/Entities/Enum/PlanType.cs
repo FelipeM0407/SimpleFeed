@@ -1,6 +1,6 @@
 namespace SimpleFeed.Domain.Entities.Enum
 {
-    public enum PlanType
+    public enum Plans
     {
         Free = 1,
         Basic = 2,
