@@ -20,5 +20,20 @@ namespace SimpleFeed.Application.Services
         {
             return await _formRepository.GetActiveFormsWithResponsesAsync(clientId);
         }
+
+        public async Task<int> DuplicateFormAsync(int formId)
+        {
+            return await _formRepository.DuplicateFormAsync(formId);
+        }
+
+        public async Task RenameFormAsync(int formId, string newName)
+        {
+            await _formRepository.RenameFormAsync(formId, newName);
+        }
+
+        public async Task DeleteFormWithFeedbacksAsync(int formId)
+        {
+            await _formRepository.DeleteFormWithFeedbacksAsync(formId);
+        }
     }
 }

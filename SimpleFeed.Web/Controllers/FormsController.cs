@@ -26,5 +26,27 @@ namespace SimpleFeed.Web.Controllers
             var result = await _formService.GetActiveFormsWithResponsesAsync(clientId);
             return Ok(result);
         }
+
+        [HttpPost("{formId}/duplicate")]
+        public async Task<IActionResult> DuplicateForm(int formId)
+        {
+            var newFormId = await _formService.DuplicateFormAsync(formId);
+            return Ok(new { NewFormId = newFormId });
+        }
+
+        [HttpPatch("{formId}/rename")]
+        public async Task<IActionResult> RenameForm(int formId, [FromBody] string newName)
+        {
+            await _formService.RenameFormAsync(formId, newName);
+            return NoContent();
+        }
+
+        [HttpDelete("{formId}")]
+        public async Task<IActionResult> DeleteFormWithFeedbacks(int formId)
+        {
+            await _formService.DeleteFormWithFeedbacksAsync(formId);
+            return Ok(new { Message = "Form and feedbacks successfully deleted." });
+        }
+
     }
 }

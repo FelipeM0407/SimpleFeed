@@ -9,5 +9,8 @@ namespace SimpleFeed.Application.Interfaces
     public interface IFormRepository
     {
         Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId);
+        Task<int> DuplicateFormAsync(int formId);
+        Task RenameFormAsync(int formId, string newName);
+        Task DeleteFormWithFeedbacksAsync(int formId);
     }
 }

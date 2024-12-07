@@ -28,7 +28,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 LEFT JOIN feedbacks fe ON fe.form_id = f.Id
                 WHERE f.client_id = @ClientId AND f.is_active = TRUE
                 GROUP BY f.Id, f.name, f.updated_at;";
-            
+
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
@@ -54,6 +54,65 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
 
             return forms;
+        }
+
+        public async Task<int> DuplicateFormAsync(int formId)
+        {
+            int newFormId;
+            var query = @"
+                WITH form_copy AS (
+                    INSERT INTO forms (client_id, template_id, name, custom_questions, is_active)
+                    SELECT client_id, template_id, name || ' (Copy)', custom_questions, is_active
+                    FROM forms
+                    WHERE id = @FormId
+                    RETURNING id
+                )
+                SELECT id FROM form_copy;";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FormId", formId);
+                    newFormId = (int)await command.ExecuteScalarAsync();
+                }
+            }
+
+            return newFormId;
+        }
+
+        public async Task RenameFormAsync(int formId, string newName)
+        {
+            var query = "UPDATE forms SET name = @NewName, updated_at = NOW() WHERE id = @FormId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FormId", formId);
+                    command.Parameters.AddWithValue("@NewName", newName);
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+        public async Task DeleteFormWithFeedbacksAsync(int formId)
+        {
+            var query = @"
+                DELETE FROM feedbacks WHERE form_id = @FormId;
+                DELETE FROM forms WHERE id = @FormId;";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FormId", formId);
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
         }
     }
 }
