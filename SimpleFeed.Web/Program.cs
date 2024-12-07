@@ -62,10 +62,13 @@ builder.Services.AddSingleton(provider =>
 // Registrar repositórios
 builder.Services.AddScoped<IFormRepository, FormRepository>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+builder.Services.AddScoped<IFieldTypeRepository, FieldTypeRepository>();
 
 // Registrar serviços
 builder.Services.AddScoped<FormService>();
 builder.Services.AddScoped<FeedbackService>();
+builder.Services.AddScoped<FieldTypeService>();
+
 
 builder.Services.AddControllers();
 
