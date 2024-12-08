@@ -2,6 +2,7 @@ using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SimpleFeed.Infrastructure.Repositories
@@ -114,5 +115,83 @@ namespace SimpleFeed.Infrastructure.Repositories
                 }
             }
         }
+
+        public async Task<int> CreateFormAsync(CreateFormDto formDto, string customQuestionsJson)
+        {
+            var query = @"
+        INSERT INTO forms (client_id, name, custom_questions, is_active, created_at, updated_at)
+        VALUES (@ClientId, @Name, @CustomQuestions::jsonb, @IsActive, NOW(), NOW())
+        RETURNING id;";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ClientId", formDto.ClientId);
+                    command.Parameters.AddWithValue("@Name", formDto.Name);
+                    command.Parameters.AddWithValue("@CustomQuestions", JsonSerializer.Serialize(formDto.Fields)); // Serializa o JSON
+                    command.Parameters.AddWithValue("@IsActive", formDto.IsActive);
+
+                    var formId = (int)await command.ExecuteScalarAsync();
+                    return formId;
+                }
+            }
+        }
+
+        public async Task<FormTemplateDto> GetTemplateByIdAsync(int templateId)
+        {
+            var query = @"
+        SELECT id, name, description, fields
+        FROM form_templates
+        WHERE id = @TemplateId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@TemplateId", templateId);
+
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            return new FormTemplateDto
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Name = reader.GetString(reader.GetOrdinal("name")),
+                                Description = reader.GetString(reader.GetOrdinal("description")),
+                                Fields = reader.GetString(reader.GetOrdinal("fields"))
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public async Task<string> GetClientPlanAsync(int clientId)
+        {
+            var query = @"
+                SELECT p.name
+                FROM clients c
+                JOIN plans p ON c.""PlanId"" = p.id
+                WHERE c.""Id"" = @ClientId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ClientId", clientId);
+                    var result = await command.ExecuteScalarAsync();
+                    return result?.ToString() ?? string.Empty;
+                }
+            }
+        }
+
+
     }
 }

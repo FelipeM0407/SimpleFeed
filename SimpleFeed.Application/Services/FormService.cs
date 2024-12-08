@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
@@ -35,5 +36,15 @@ namespace SimpleFeed.Application.Services
         {
             await _formRepository.DeleteFormWithFeedbacksAsync(formId);
         }
+
+        public async Task<int> CreateFormAsync(CreateFormDto formDto)
+        {
+            // Serializar os campos em JSON
+            var customQuestionsJson = JsonSerializer.Serialize(formDto.Fields);
+
+            // Chamar o repositório para salvar no banco
+            return await _formRepository.CreateFormAsync(formDto, customQuestionsJson);
+        }
+
     }
 }

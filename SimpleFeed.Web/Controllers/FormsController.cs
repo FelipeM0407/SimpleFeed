@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Services;
 
 namespace SimpleFeed.Web.Controllers
@@ -19,6 +20,7 @@ namespace SimpleFeed.Web.Controllers
         {
             _formService = formService;
         }
+
 
         [HttpGet("dashboard/{clientId}")]
         public async Task<IActionResult> GetFormDashboard(int clientId)
@@ -46,6 +48,13 @@ namespace SimpleFeed.Web.Controllers
         {
             await _formService.DeleteFormWithFeedbacksAsync(formId);
             return Ok(new { Message = "Form and feedbacks successfully deleted." });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateForm([FromBody] CreateFormDto formDto)
+        {
+            var formId = await _formService.CreateFormAsync(formDto);
+            return CreatedAtAction(nameof(CreateForm), new { id = formId }, new { FormId = formId });
         }
 
     }
