@@ -39,10 +39,8 @@ namespace SimpleFeed.Application.Services
 
         public async Task<int> CreateFormAsync(CreateFormDto formDto)
         {
-            // Serializar os campos em JSON
-            var customQuestionsJson = JsonSerializer.Serialize(formDto.Fields);
+            var customQuestionsJson = JsonSerializer.Serialize(formDto.Fields.OrderBy(f => f.Order));
 
-            // Chamar o repositório para salvar no banco
             return await _formRepository.CreateFormAsync(formDto, customQuestionsJson);
         }
 

@@ -18,6 +18,7 @@ namespace SimpleFeed.Application.DTOs
         public int FieldTypeId { get; set; }
         public string Label { get; set; }
         public bool Required { get; set; }
+        public int Order { get; set; }
         public Dictionary<string, object>? Options { get; set; } // Para configurações como opções de dropdown, etc.
     }
 }
