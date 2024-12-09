@@ -192,6 +192,46 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
+        public async Task<List<FormFieldDto>> GetFormStructureAsync(int formId)
+        {
+            var fields = new List<FormFieldDto>();
+
+            var query = @"
+                SELECT custom_questions
+                FROM forms
+                WHERE id = @FormId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FormId", formId);
+
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            var fieldsJson = reader["custom_questions"]?.ToString() ?? "[]";
+                            fields = JsonSerializer.Deserialize<List<FormFieldDto>>(fieldsJson) ?? new List<FormFieldDto>();
+                        }
+                    }
+                }
+            }
+
+            // Adicionar o campo fixo "submittedAt"
+            fields.Insert(0, new FormFieldDto
+            {
+                Label = "Data do Feedback",
+                Type = "submittedAt",
+                FieldTypeId = -1,
+                Required = false,
+                Order = 0
+            });
+
+            return fields;
+        }
+
 
     }
 }

@@ -44,5 +44,11 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.CreateFormAsync(formDto, customQuestionsJson);
         }
 
+        public async Task<List<FormFieldDto>> GetFormStructureAsync(int formId)
+        {
+            return await _formRepository.GetFormStructureAsync(formId);
+        }
+
+
     }
 }

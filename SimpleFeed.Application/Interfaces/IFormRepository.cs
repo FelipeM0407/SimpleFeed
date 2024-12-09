@@ -14,6 +14,7 @@ namespace SimpleFeed.Application.Interfaces
         Task DeleteFormWithFeedbacksAsync(int formId);
         Task<int> CreateFormAsync(CreateFormDto formDto, string customQuestionsJson);
         Task<string> GetClientPlanAsync(int clientId);
+        Task<List<FormFieldDto>> GetFormStructureAsync(int formId);
 
     }
 }

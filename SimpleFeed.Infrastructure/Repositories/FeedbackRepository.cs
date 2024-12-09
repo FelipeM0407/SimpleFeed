@@ -40,7 +40,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             feedbacks.Add(new FeedbackDetailDto
                             {
                                 SubmittedAt = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
-                                Answers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(reader.GetString(reader.GetOrdinal("answers"))),
+                                Answers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(reader.GetString(reader.GetOrdinal("answers"))), // Ajustado para object
                                 IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
                             });
                         }

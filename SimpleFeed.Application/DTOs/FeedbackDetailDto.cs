@@ -8,7 +8,7 @@ namespace SimpleFeed.Application.DTOs
     public class FeedbackDetailDto
     {
         public DateTime SubmittedAt { get; set; }
-        public Dictionary<string, string> Answers { get; set; } // Cada coluna dinâmica do formulário
-        public bool IsNew { get; set; } // Indica se é novo
+        public Dictionary<string, object> Answers { get; set; } // Alterado para aceitar object
+        public bool IsNew { get; set; }
     }
 }

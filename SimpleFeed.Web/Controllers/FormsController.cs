@@ -57,5 +57,15 @@ namespace SimpleFeed.Web.Controllers
             return CreatedAtAction(nameof(CreateForm), new { id = formId }, new { FormId = formId });
         }
 
+        [HttpGet("{formId}/structure")]
+        public async Task<IActionResult> GetFormStructure(int formId)
+        {
+            var structure = await _formService.GetFormStructureAsync(formId);
+            if (structure == null || !structure.Any())
+                return NotFound(new { Message = "Form structure not found." });
+
+            return Ok(structure);
+        }
+
     }
 }
