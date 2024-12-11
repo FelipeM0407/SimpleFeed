@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Configuração do DbContext para PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));  // Usando PostgreSQL
-    
+
 
 // Configurar o Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -53,6 +53,26 @@ builder.Services.ConfigureApplicationCookie(options =>
         context.Response.StatusCode = 401; // Retorna status HTTP 401 em vez de redirecionar
         return Task.CompletedTask;
     };
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequireDigit = false; // Não exige números
+    options.Password.RequireNonAlphanumeric = false; // Não exige caracteres especiais
+    options.Password.RequireUppercase = false; // Não exige letras maiúsculas
+    options.Password.RequiredLength = 6; // Mantém o comprimento mínimo de 6 caracteres
+    options.Password.RequireLowercase = false; // Permitir senhas sem letras minúsculas
+    options.Password.RequiredUniqueChars = 1; // Exige pelo menos 1 caractere único
 });
 
 
@@ -127,7 +147,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
-app.UseAuthentication();
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 

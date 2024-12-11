@@ -69,7 +69,7 @@ namespace SimpleFeed.Web.Controllers
                 // Criar o registro do Client associado ao usuário
                 var client = new Client
                 {
-                    UserId = createdUser.Id,  // UserId agora é garantido
+                    UserId = createdUser.Id, // UserId agora é garantido
                     PlanId = (int)model.Plan,
                     Name = model.Name,
                     Cpf = model.Cpf,
@@ -86,8 +86,11 @@ namespace SimpleFeed.Web.Controllers
                 // Gerar o token JWT
                 var token = GenerateJwtToken(createdUser);
 
-                // Retornar o token para o cliente
-                return Ok(new { Token = token });
+                // Retornar o token para o cliente (com login automático desativado)
+                // return Ok(new { Token = token }); // Comentado para desativar login automático
+
+                // Retornar sucesso sem login automático
+                return Ok(new { Message = "User registered successfully. Please login to continue." });
             }
             catch (DbUpdateException ex)
             {
@@ -100,6 +103,7 @@ namespace SimpleFeed.Web.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+
 
 
         [HttpPost("login")]
