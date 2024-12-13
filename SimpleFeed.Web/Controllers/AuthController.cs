@@ -153,6 +153,7 @@ namespace SimpleFeed.Web.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("name", user.FirstName),
                 new Claim("id", user.Id)
             };
 
