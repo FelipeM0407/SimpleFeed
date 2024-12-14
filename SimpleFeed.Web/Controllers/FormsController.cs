@@ -22,7 +22,7 @@ namespace SimpleFeed.Web.Controllers
         }
 
 
-        [HttpGet("dashboard/{clientId}")]
+        [HttpGet("{clientId}")]
         public async Task<IActionResult> GetFormDashboard(int clientId)
         {
             var result = await _formService.GetActiveFormsWithResponsesAsync(clientId);
