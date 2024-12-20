@@ -19,6 +19,7 @@ namespace SimpleFeed.Infrastructure.Repositories
 
         public async Task<IEnumerable<FeedbackDetailDto>> GetFeedbacksByFormAsync(int formId)
         {
+
             var feedbacks = new List<FeedbackDetailDto>();
 
             var query = @"
@@ -41,7 +42,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 SubmittedAt = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
-                                Answers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(reader.GetString(reader.GetOrdinal("answers"))), // Ajustado para object
+                                Answers = System.Text.Json.JsonSerializer.Deserialize<List<AnswerItem>>(reader.GetString(reader.GetOrdinal("answers"))),
                                 IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
                             });
                         }

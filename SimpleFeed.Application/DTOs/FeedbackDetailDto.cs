@@ -9,7 +9,13 @@ namespace SimpleFeed.Application.DTOs
     {
         public int Id { get; set; }
         public DateTime SubmittedAt { get; set; }
-        public Dictionary<string, object> Answers { get; set; } // Alterado para aceitar object
+        public List<AnswerItem> Answers { get; set; }
         public bool IsNew { get; set; }
+    }
+
+    public class AnswerItem
+    {
+        public int Order { get; set; }
+        public object Value { get; set; }
     }
 }
