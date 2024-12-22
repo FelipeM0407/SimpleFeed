@@ -12,7 +12,7 @@ namespace SimpleFeed.Application.Interfaces
         Task<int> DuplicateFormAsync(int formId);
         Task RenameFormAsync(int formId, string newName);
         Task DeleteFormWithFeedbacksAsync(int formId);
-        Task<int> CreateFormAsync(CreateFormDto formDto, string customQuestionsJson);
+        Task<int> CreateFormAsync(CreateFormDto formDto);
         Task<string> GetClientPlanAsync(int clientId);
         Task<List<FormFieldDto>> GetFormStructureAsync(int formId);
 

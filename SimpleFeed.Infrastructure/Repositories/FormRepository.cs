@@ -116,25 +116,61 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task<int> CreateFormAsync(CreateFormDto formDto, string customQuestionsJson)
+        public async Task<int> CreateFormAsync(CreateFormDto formDto)
         {
-            var query = @"
-        INSERT INTO forms (client_id, name, custom_questions, is_active, created_at, updated_at)
-        VALUES (@ClientId, @Name, @CustomQuestions::jsonb, @IsActive, NOW(), NOW())
-        RETURNING id;";
+            var formQuery = @"
+                INSERT INTO forms (client_id, name, is_active, template_id, created_at)
+                VALUES (@Client_Id, @Name, @Is_Active, @Template_id, NOW())
+                RETURNING id;";
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                using (var transaction = await connection.BeginTransactionAsync())
                 {
-                    command.Parameters.AddWithValue("@ClientId", formDto.ClientId);
-                    command.Parameters.AddWithValue("@Name", formDto.Name);
-                    command.Parameters.AddWithValue("@CustomQuestions", JsonSerializer.Serialize(formDto.Fields)); // Serializa o JSON
-                    command.Parameters.AddWithValue("@IsActive", formDto.IsActive);
+                    try
+                    {
+                        int formId;
+                        using (var formCommand = new NpgsqlCommand(formQuery, connection, transaction))
+                        {
+                            formCommand.Parameters.AddWithValue("@Client_Id", formDto.Client_Id);
+                            formCommand.Parameters.AddWithValue("@Name", formDto.Name);
+                            formCommand.Parameters.AddWithValue("@Is_Active", formDto.Is_Active);
+                            formCommand.Parameters.AddWithValue("@Template_id", formDto.Template_Id == 0 ? DBNull.Value : formDto.Template_Id);
 
-                    var formId = (int)await command.ExecuteScalarAsync();
-                    return formId;
+                            formId = (int)await formCommand.ExecuteScalarAsync();
+                        }
+
+                        var fieldsQuery = @"
+                            INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
+                            VALUES (@FormId, @Name, @Label, @Type, @Required, @Ordenation, @Options, @Field_Type_Id);";
+
+                        foreach (var field in formDto.Fields)
+                        {
+                            using (var fieldCommand = new NpgsqlCommand(fieldsQuery, connection, transaction))
+                            {
+                                fieldCommand.Parameters.AddWithValue("@FormId", formId);
+                                fieldCommand.Parameters.AddWithValue("@Name", field.Name);
+                                fieldCommand.Parameters.AddWithValue("@Label", field.Label);
+                                fieldCommand.Parameters.AddWithValue("@Type", field.Type);
+                                fieldCommand.Parameters.AddWithValue("@Required", field.Required);
+                                fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
+                                fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? 
+                                    DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
+                                fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
+
+                                await fieldCommand.ExecuteNonQueryAsync();
+                            }
+                        }
+
+                        await transaction.CommitAsync();
+                        return formId;
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
                 }
             }
         }
@@ -192,43 +228,39 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task<List<FormFieldDto>> GetFormStructureAsync(int formId)
+        public async Task<List<FormFieldDto>> GetFormStructureAsync(int form_Id)
         {
             var fields = new List<FormFieldDto>();
 
             var query = @"
-                SELECT custom_questions
-                FROM forms
-                WHERE id = @FormId";
+                SELECT id, name, label, type, required, ordenation
+                FROM form_fields
+                WHERE form_id = @Form_Id";
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
                 using (var command = new NpgsqlCommand(query, connection))
                 {
-                    command.Parameters.AddWithValue("@FormId", formId);
+                    command.Parameters.AddWithValue("@Form_Id", form_Id);
 
                     using (var reader = await command.ExecuteReaderAsync())
                     {
-                        if (await reader.ReadAsync())
+                        while (await reader.ReadAsync())
                         {
-                            var fieldsJson = reader["custom_questions"]?.ToString() ?? "[]";
-                            fields = JsonSerializer.Deserialize<List<FormFieldDto>>(fieldsJson) ?? new List<FormFieldDto>();
+                            fields.Add(new FormFieldDto
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Name = reader.GetString(reader.GetOrdinal("name")),
+                                Type = reader.GetString(reader.GetOrdinal("type")),
+                                Label = reader.GetString(reader.GetOrdinal("label")),
+                                Required = reader.GetBoolean(reader.GetOrdinal("required")),
+                                Ordenation = reader.GetInt32(reader.GetOrdinal("ordenation"))
+                            });
                         }
                     }
                 }
             }
-
-            // Adicionar o campo fixo "submittedAt"
-            fields.Insert(0, new FormFieldDto
-            {
-                Label = "Data do Feedback",
-                Type = "submittedAt",
-                FieldTypeId = -1,
-                Required = false,
-                Order = 0
-            });
-
             return fields;
         }
 

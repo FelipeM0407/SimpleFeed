@@ -39,9 +39,7 @@ namespace SimpleFeed.Application.Services
 
         public async Task<int> CreateFormAsync(CreateFormDto formDto)
         {
-            var customQuestionsJson = JsonSerializer.Serialize(formDto.Fields.OrderBy(f => f.Order));
-
-            return await _formRepository.CreateFormAsync(formDto, customQuestionsJson);
+            return await _formRepository.CreateFormAsync(formDto);
         }
 
         public async Task<List<FormFieldDto>> GetFormStructureAsync(int formId)

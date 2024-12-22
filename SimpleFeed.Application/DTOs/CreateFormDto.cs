@@ -9,35 +9,21 @@ namespace SimpleFeed.Application.DTOs
     public class CreateFormDto
     {
         public string Name { get; set; }
-        public int ClientId { get; set; }
-        public bool IsActive { get; set; }
+        public int Client_Id { get; set; }
+        public bool Is_Active { get; set; }
+        public int Template_Id { get; set; }
         public List<FormFieldDto> Fields { get; set; }
     }
 
     public class FormFieldDto
     {
-        [JsonPropertyName("fieldTypeId")]
-        public int FieldTypeId { get; set; }
-
-        [JsonPropertyName("label")]
-        public string Label { get; set; }
-
-        [JsonPropertyName("required")]
-        public bool Required { get; set; }
-
-        [JsonPropertyName("order")]
-        public int Order { get; set; }
-
-        [JsonPropertyName("options")]
-        public Dictionary<string, object>? Options { get; set; }
-
-        [JsonPropertyName("type")]
+        public int Id { get; set; }
         public string Type { get; set; }
-
-        [JsonPropertyName("max")]
-        public int? Max { get; set; }
-
-        [JsonPropertyName("min")]
-        public int? Min { get; set; }
+        public bool Required { get; set; }
+        public string Label { get; set; }
+        public string Name { get; set; }
+        public int Ordenation { get; set; }
+        public string? Options { get; set; }
+        public int Field_Type_Id { get; set; }
     }
 }

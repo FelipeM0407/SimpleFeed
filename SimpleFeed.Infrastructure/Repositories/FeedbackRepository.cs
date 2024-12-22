@@ -23,7 +23,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             var feedbacks = new List<FeedbackDetailDto>();
 
             var query = @"
-                SELECT f.id, f.submitted_at, f.answers, f.is_new
+                SELECT f.id, f.answers, f.is_new
                 FROM feedbacks f
                 WHERE f.form_id = @FormId";
 
@@ -41,8 +41,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             feedbacks.Add(new FeedbackDetailDto
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                SubmittedAt = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
-                                Answers = System.Text.Json.JsonSerializer.Deserialize<List<AnswerItem>>(reader.GetString(reader.GetOrdinal("answers"))),
+                                Answers = reader["answers"]?.ToString() ?? "[]",
                                 IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
                             });
                         }
