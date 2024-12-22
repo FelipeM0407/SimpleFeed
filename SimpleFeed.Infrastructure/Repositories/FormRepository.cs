@@ -261,7 +261,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                     }
                 }
             }
-            return fields;
+            return fields; 
         }
 
 
