@@ -10,5 +10,6 @@ namespace SimpleFeed.Application.Interfaces
     {
         Task<IEnumerable<FeedbackDetailDto>> GetFeedbacksByFormAsync(int formId);
         Task MarkFeedbacksAsReadAsync(int formId);
+        Task<IEnumerable<FeedbackDetailDto>> FilterFeedbacksAsync(int formId, DateTime? submitted_Start, DateTime? submitted_End);
     }
 }

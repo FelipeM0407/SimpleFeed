@@ -233,7 +233,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             var fields = new List<FormFieldDto>();
 
             var query = @"
-                SELECT id, name, label, type, required, ordenation
+                SELECT id, name, label, type, required, ordenation, options
                 FROM form_fields
                 WHERE form_id = @Form_Id";
 
@@ -255,6 +255,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 Type = reader.GetString(reader.GetOrdinal("type")),
                                 Label = reader.GetString(reader.GetOrdinal("label")),
                                 Required = reader.GetBoolean(reader.GetOrdinal("required")),
+                                Options = reader["options"]?.ToString(),
                                 Ordenation = reader.GetInt32(reader.GetOrdinal("ordenation"))
                             });
                         }

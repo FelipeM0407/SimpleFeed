@@ -23,7 +23,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             var feedbacks = new List<FeedbackDetailDto>();
 
             var query = @"
-                SELECT f.id, f.answers, f.is_new
+                SELECT f.id, f.answers, f.submitted_at, f.is_new
                 FROM feedbacks f
                 WHERE f.form_id = @FormId";
 
@@ -42,6 +42,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 Answers = reader["answers"]?.ToString() ?? "[]",
+                                Submitted_At = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
                                 IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
                             });
                         }
@@ -69,5 +70,52 @@ namespace SimpleFeed.Infrastructure.Repositories
                 }
             }
         }
+
+        public async Task<IEnumerable<FeedbackDetailDto>> FilterFeedbacksAsync(int formId, DateTime? submitted_Start, DateTime? submitted_End)
+        {
+            var feedbacks = new List<FeedbackDetailDto>();
+
+            var query = @"
+                SELECT f.id, f.answers, f.submitted_at, f.is_new
+                FROM feedbacks f
+                WHERE f.form_id = @FormId";
+
+            if (submitted_Start.HasValue && submitted_End.HasValue)
+            {
+                query += " AND DATE(f.submitted_at) BETWEEN DATE(@SubmittedStart) AND DATE(@SubmittedEnd)";
+            }
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FormId", formId);
+
+                    if (submitted_Start.HasValue && submitted_End.HasValue)
+                    {
+                        command.Parameters.AddWithValue("@SubmittedStart", submitted_Start);
+                        command.Parameters.AddWithValue("@SubmittedEnd", submitted_End);
+                    }
+
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            feedbacks.Add(new FeedbackDetailDto
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Answers = reader["answers"]?.ToString() ?? "[]",
+                                Submitted_At = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
+                                IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
+                            });
+                        }
+                    }
+                }
+            }
+
+            return feedbacks;
+        }
+
     }
 }

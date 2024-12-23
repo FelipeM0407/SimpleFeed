@@ -26,5 +26,14 @@ namespace SimpleFeed.Application.Services
 
             return feedbacks;
         }
+
+        //metodo de filtrar os feedbacks
+        public async Task<IEnumerable<FeedbackDetailDto>> FilterFeedbacksAsync(int formId, DateTime? submitted_Start, DateTime? submitted_End)
+        {
+            // Buscar os feedbacks
+            var feedbacks = await _feedbackRepository.FilterFeedbacksAsync(formId, submitted_Start, submitted_End);
+
+            return feedbacks;
+        }
     }
 }
