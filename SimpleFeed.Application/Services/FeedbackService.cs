@@ -35,5 +35,10 @@ namespace SimpleFeed.Application.Services
 
             return feedbacks;
         }
+
+        public async Task DeleteFeedbacksAsync(int[] feedbackIds)
+        {
+            await _feedbackRepository.DeleteFeedbacksAsync(feedbackIds);
+        }
     }
 }

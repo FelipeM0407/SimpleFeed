@@ -85,6 +85,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                 query += " AND DATE(f.submitted_at) BETWEEN DATE(@SubmittedStart) AND DATE(@SubmittedEnd)";
             }
 
+            query += " ORDER BY f.submitted_at DESC";
+
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
@@ -117,5 +119,19 @@ namespace SimpleFeed.Infrastructure.Repositories
             return feedbacks;
         }
 
+        public async Task DeleteFeedbacksAsync(int[] feedbackIds)
+        {
+            var query = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+        }
     }
 }

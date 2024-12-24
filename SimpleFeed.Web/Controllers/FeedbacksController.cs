@@ -35,5 +35,11 @@ namespace SimpleFeed.Web.Controllers
             return Ok(feedbacks);
         }
 
+        [HttpDelete("delete")]
+        public async Task<IActionResult> DeleteFeedbacks([FromBody] int[] feedbackIds)
+        {
+            await _feedbackService.DeleteFeedbacksAsync(feedbackIds);
+            return NoContent();
+        }
     }
 }
