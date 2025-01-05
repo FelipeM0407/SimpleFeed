@@ -91,5 +91,41 @@ namespace SimpleFeed.Infrastructure.Repositories
 
             return template;
         }
+
+        public async Task<IEnumerable<FormTemplateDto>> GetTemplatesByClientIdAsync(Guid clientId)
+        {
+            var templates = new List<FormTemplateDto>();
+
+            var query = @"
+                SELECT ft.id, ft.name, ft.description, ft.fields
+                FROM clients cl
+                INNER JOIN form_templates ft ON ft.plan_id = cl.""PlanId""
+                WHERE cl.""UserId"" = @ClientId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ClientId", clientId.ToString());
+
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            templates.Add(new FormTemplateDto
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Name = reader.GetString(reader.GetOrdinal("name")),
+                                Description = reader.GetString(reader.GetOrdinal("description")),
+                                Fields = reader.GetString(reader.GetOrdinal("fields"))
+                            });
+                        }
+                    }
+                }
+            }
+
+            return templates;
+        }
     }
 }

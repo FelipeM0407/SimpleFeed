@@ -21,11 +21,11 @@ namespace SimpleFeed.Web.Controllers
             _templateService = templateService;
         }
 
-        [HttpGet("client/{clientId}")]
-        public async Task<IActionResult> GetTemplatesByClientId(int clientId)
+        [HttpGet("{clientId}/templates")]
+        public async Task<IActionResult> GetTemplatesByClientId(Guid clientId)
         {
-            var templates = await _templateService.GetTemplatesByPlanIdAsync(clientId);
-            return Ok(templates);
+            var fieldTypes = await _templateService.GetTemplatesByClientIdAsync(clientId);
+            return Ok(fieldTypes);
         }
 
         [HttpGet("{templateId}")]

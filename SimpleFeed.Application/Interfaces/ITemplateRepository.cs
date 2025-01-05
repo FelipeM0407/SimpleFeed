@@ -10,5 +10,7 @@ namespace SimpleFeed.Application.Interfaces
     {
         Task<IEnumerable<FormTemplateDto>> GetTemplatesByPlanIdAsync(int planId);
         Task<FormTemplateDto?> GetTemplateByIdAsync(int templateId);
+        Task<IEnumerable<FormTemplateDto>> GetTemplatesByClientIdAsync(Guid clientId);
+
     }
 }

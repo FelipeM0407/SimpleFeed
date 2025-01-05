@@ -20,5 +20,12 @@ namespace SimpleFeed.Application.Services
         {
             return await _fieldTypeRepository.GetFieldTypesAsync();
         }
+
+        public async Task<IEnumerable<FieldTypeDto>> GetFieldTypesByClientIdAsync(Guid clientId)
+        {
+            return await _fieldTypeRepository.GetFieldTypesByClientIdAsync(clientId);
+        }
+
+       
     }
 }

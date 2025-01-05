@@ -25,5 +25,10 @@ namespace SimpleFeed.Application.Services
         {
             return await _templateRepository.GetTemplateByIdAsync(templateId);
         }
+
+         public async Task<IEnumerable<FormTemplateDto>> GetTemplatesByClientIdAsync(Guid clientId)
+        {
+            return await _templateRepository.GetTemplatesByClientIdAsync(clientId);
+        }
     }
 }

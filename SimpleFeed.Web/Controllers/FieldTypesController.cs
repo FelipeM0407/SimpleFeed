@@ -26,5 +26,16 @@ namespace SimpleFeed.Web.Controllers
             var fieldTypes = await _fieldTypeService.GetFieldTypesAsync();
             return Ok(fieldTypes);
         }
+
+        [HttpGet("{clientId}")]
+        public async Task<IActionResult> GetFieldTypesByClientId(Guid clientId)
+        {
+            var fieldTypes = await _fieldTypeService.GetFieldTypesByClientIdAsync(clientId);
+            return Ok(fieldTypes);
+        }
+
+        
+
+
     }
 }
