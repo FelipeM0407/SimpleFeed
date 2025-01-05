@@ -57,7 +57,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             var fieldTypes = new List<FieldTypeDto>();
 
             var query = @"
-                SELECT ft.id, ft.name, ft.description, ft.settings_schema, ft.field_type, ft.plan_id
+                SELECT ft.id, ft.name, ft.label, ft.description, ft.settings_schema, ft.field_type, ft.plan_id
                 FROM clients cl
                 INNER JOIN field_types ft ON ft.plan_id = cl.""PlanId""
                 WHERE cl.""UserId"" = @ClientId";
@@ -77,6 +77,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 Name = reader.GetString(reader.GetOrdinal("name")),
+                                Label = reader.GetString(reader.GetOrdinal("label")),
                                 Description = reader.GetString(reader.GetOrdinal("description")),
                                 FieldType = reader.GetString(reader.GetOrdinal("field_type")),
                                 SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),

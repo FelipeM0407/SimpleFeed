@@ -149,13 +149,18 @@ namespace SimpleFeed.Web.Controllers
 
         private string GenerateJwtToken(ApplicationUser user)
         {
+            //inserir o id do cliente no token
+            var client = _context.Clients.FirstOrDefault(c => c.UserId == user.Id);
+
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("name", user.FirstName),
-                new Claim("id", user.Id)
+                new Claim("id", user.Id),
+                new Claim("client_id", client?.Id.ToString() ?? "0"),
             };
+
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Secret"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

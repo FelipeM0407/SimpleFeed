@@ -22,7 +22,7 @@ namespace SimpleFeed.Infrastructure.Repositories
 
             var query = @"
                 SELECT f.id AS Id, 
-                    f.name AS FormName, 
+                    f.name AS Name, 
                     COUNT(fe.Id) AS ResponseCount,
                     f.updated_at AS LastUpdated
                 FROM forms f
@@ -45,7 +45,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             forms.Add(new FormDashboardDto
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                FormName = reader["FormName"].ToString(),
+                                Name = reader["Name"].ToString(),
                                 ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
                                 LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated"))
                             });
