@@ -85,7 +85,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 query += " AND DATE(f.submitted_at) BETWEEN DATE(@SubmittedStart) AND DATE(@SubmittedEnd)";
             }
 
-            query += " ORDER BY f.submitted_at DESC";
+            //query += " ORDER BY f.submitted_at DESC";
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
