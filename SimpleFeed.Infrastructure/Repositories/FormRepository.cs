@@ -155,7 +155,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 fieldCommand.Parameters.AddWithValue("@Type", field.Type);
                                 fieldCommand.Parameters.AddWithValue("@Required", field.Required);
                                 fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
-                                fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? 
+                                fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ?
                                     DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
                                 fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
 
@@ -262,9 +262,27 @@ namespace SimpleFeed.Infrastructure.Repositories
                     }
                 }
             }
-            return fields; 
+            return fields;
         }
 
+        public async Task<bool> ValidateExistenceFeedbacks(int form_Id)
+        {
+            var query = @"
+            SELECT COUNT(Id)
+            FROM feedbacks
+            WHERE form_id = @Form_Id";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Form_Id", form_Id);
+                    var count = (long)await command.ExecuteScalarAsync();
+                    return count > 0;
+                }
+            }
+        }
 
     }
 }

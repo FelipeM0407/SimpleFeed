@@ -15,6 +15,7 @@ namespace SimpleFeed.Application.Interfaces
         Task<int> CreateFormAsync(CreateFormDto formDto);
         Task<string> GetClientPlanAsync(int clientId);
         Task<List<FormFieldDto>> GetFormStructureAsync(int formId);
+        Task<bool> ValidateExistenceFeedbacks(int formId);
 
     }
 }

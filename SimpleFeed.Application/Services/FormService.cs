@@ -47,6 +47,11 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.GetFormStructureAsync(formId);
         }
 
+        public async Task<bool> ValidateExistenceFeedbacks(int formId)
+        {
+            return await _formRepository.ValidateExistenceFeedbacks(formId);
+        }
+
 
     }
 }

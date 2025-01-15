@@ -67,5 +67,12 @@ namespace SimpleFeed.Web.Controllers
             return Ok(structure);
         }
 
+        [HttpGet("{formId}/feedbacks")]
+        public async Task<IActionResult> ValidateExistenceFeedbacks(int formId)
+        {
+            var hasFeedbacks = await _formService.ValidateExistenceFeedbacks(formId);
+            return Ok(hasFeedbacks);
+        }
+
     }
 }
