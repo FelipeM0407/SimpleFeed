@@ -74,5 +74,12 @@ namespace SimpleFeed.Web.Controllers
             return Ok(hasFeedbacks);
         }
 
+        [HttpPost("save-edits")]
+        public async Task<IActionResult> SaveFormEdits([FromBody] EditFormDto editFormDto)
+        {
+            var result = await _formService.SaveFormEditsAsync(editFormDto);
+            return Ok(new { Success = result });
+        }
+
     }
 }

@@ -25,5 +25,6 @@ namespace SimpleFeed.Application.DTOs
         public int Ordenation { get; set; }
         public string? Options { get; set; }
         public int Field_Type_Id { get; set; }
+        public bool IsNew { get; set; }
     }
 }

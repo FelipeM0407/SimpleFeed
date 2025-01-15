@@ -284,5 +284,125 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
+        public async Task<bool> SaveFormEditsAsync(EditFormDto formDto)
+        {
+            var formQuery = @"
+        UPDATE forms
+        SET updated_at = NOW()
+        WHERE id = @FormId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var transaction = await connection.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        // Atualiza o formulário
+                        using (var formCommand = new NpgsqlCommand(formQuery, connection, transaction))
+                        {
+                            formCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+
+                            await formCommand.ExecuteNonQueryAsync();
+                        }
+
+                        // Exclui campos com base na lista FieldsDeletedsWithFeedbacks
+                        if (formDto.FieldsDeletedsWithFeedbacks.Any())
+                        {
+                            var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
+                            using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
+                            {
+                                deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
+                                await deleteFieldsCommand.ExecuteNonQueryAsync();
+                            }
+
+                            // Remove objetos correspondentes dos feedbacks, apenas se houver FieldsDeletedsWithFeedbacks
+                            var updateFeedbacksQuery = @"
+                        WITH updated_answers AS (
+                            SELECT id, jsonb_agg(answer) AS new_answers
+                            FROM (
+                                SELECT id, jsonb_array_elements(answers) AS answer
+                                FROM feedbacks
+                                WHERE form_id = @FormId
+                            ) sub
+                            WHERE NOT (answer->>'id_form_field')::int = ANY(@FieldIds)
+                            GROUP BY id
+                        )
+                        UPDATE feedbacks
+                        SET answers = updated_answers.new_answers
+                        FROM updated_answers
+                        WHERE feedbacks.id = updated_answers.id;";
+
+                            using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
+                            {
+                                updateFeedbacksCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                                updateFeedbacksCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
+                                await updateFeedbacksCommand.ExecuteNonQueryAsync();
+                            }
+                        }
+                        else
+                        {
+                            // Remove apenas os campos da tabela form_fields
+                            var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
+                            using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
+                            {
+                                deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
+                                await deleteFieldsCommand.ExecuteNonQueryAsync();
+                            }
+                        }
+
+                        // Insere novos campos em form_fields, apenas se IsNew for verdadeiro
+                        if (formDto.Fields.Any(f => f.IsNew))
+                        {
+                            var insertFieldsQuery = @"
+                        INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
+                        VALUES (@FormId, @Name, @Label, @Type, @Required, @Ordenation, @Options, @Field_Type_Id)
+                        RETURNING id;";
+
+                            foreach (var field in formDto.Fields.Where(f => f.IsNew))
+                            {
+                                using (var fieldCommand = new NpgsqlCommand(insertFieldsQuery, connection, transaction))
+                                {
+                                    fieldCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                                    fieldCommand.Parameters.AddWithValue("@Name", field.Name);
+                                    fieldCommand.Parameters.AddWithValue("@Label", field.Label);
+                                    fieldCommand.Parameters.AddWithValue("@Type", field.Type);
+                                    fieldCommand.Parameters.AddWithValue("@Required", field.Required);
+                                    fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
+                                    fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? (object)DBNull.Value : field.Options);
+                                    fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
+
+                                    var newFieldId = (int)await fieldCommand.ExecuteScalarAsync();
+
+                                    // Adiciona objetos vazios na tabela feedbacks
+                                    var updateFeedbacksQuery = @"
+                                UPDATE feedbacks
+                                SET answers = answers || jsonb_build_object('id_form_field', @FieldId, 'value', '')
+                                WHERE form_id = @FormId;";
+
+                                    using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
+                                    {
+                                        updateFeedbacksCommand.Parameters.AddWithValue("@FieldId", newFieldId);
+                                        updateFeedbacksCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                                        await updateFeedbacksCommand.ExecuteNonQueryAsync();
+                                    }
+                                }
+                            }
+                        }
+
+                        // Confirma a transação
+                        await transaction.CommitAsync();
+                        return true;
+                    }
+                    catch (Exception e)
+                    {
+                        // Reverte a transação em caso de erro
+                        Console.WriteLine(e.Message);
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+                }
+            }
+        }
     }
 }

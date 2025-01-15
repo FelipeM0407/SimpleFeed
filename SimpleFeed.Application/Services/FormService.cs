@@ -52,6 +52,10 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.ValidateExistenceFeedbacks(formId);
         }
 
+        public async Task<bool> SaveFormEditsAsync(EditFormDto editFormDto)
+        {
+            return await _formRepository.SaveFormEditsAsync(editFormDto);
+        }
 
     }
 }
