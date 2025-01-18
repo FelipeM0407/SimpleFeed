@@ -369,7 +369,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     fieldCommand.Parameters.AddWithValue("@Type", field.Type);
                                     fieldCommand.Parameters.AddWithValue("@Required", field.Required);
                                     fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
-                                    fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? (object)DBNull.Value : field.Options);
+                                    fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
                                     fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
 
                                     var newFieldId = (int)await fieldCommand.ExecuteScalarAsync();
@@ -387,6 +387,32 @@ namespace SimpleFeed.Infrastructure.Repositories
                                         await updateFeedbacksCommand.ExecuteNonQueryAsync();
                                     }
                                 }
+                            }
+                        }
+
+                        // Atualiza todos os campos antigos
+                        foreach (var field in formDto.Fields.Where(f => !f.IsNew))
+                        {
+                            var updateFieldQuery = @"
+                                UPDATE form_fields
+                                SET name = @Name,
+                                    label = @Label,
+                                    type = @Type,
+                                    required = @Required,
+                                    ordenation = @Ordenation,
+                                    options = @Options
+                                WHERE id = @FieldId";
+
+                            using (var updateFieldCommand = new NpgsqlCommand(updateFieldQuery, connection, transaction))
+                            {
+                                updateFieldCommand.Parameters.AddWithValue("@Name", field.Name);
+                                updateFieldCommand.Parameters.AddWithValue("@Label", field.Label);
+                                updateFieldCommand.Parameters.AddWithValue("@Type", field.Type);
+                                updateFieldCommand.Parameters.AddWithValue("@Required", field.Required);
+                                updateFieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
+                                updateFieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
+                                updateFieldCommand.Parameters.AddWithValue("@FieldId", field.Id);
+                                await updateFieldCommand.ExecuteNonQueryAsync();
                             }
                         }
 
