@@ -22,7 +22,7 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.GetActiveFormsWithResponsesAsync(clientId);
         }
 
-        public async Task<int> DuplicateFormAsync(int formId)
+        public async Task<bool> DuplicateFormAsync(int formId)
         {
             return await _formRepository.DuplicateFormAsync(formId);
         }

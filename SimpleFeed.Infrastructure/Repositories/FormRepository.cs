@@ -57,31 +57,78 @@ namespace SimpleFeed.Infrastructure.Repositories
             return forms;
         }
 
-        public async Task<int> DuplicateFormAsync(int formId)
+        public async Task<bool> DuplicateFormAsync(int formId)
         {
-            int newFormId;
-            var query = @"
-                WITH form_copy AS (
-                    INSERT INTO forms (client_id, template_id, name, custom_questions, is_active)
-                    SELECT client_id, template_id, name || ' (Copy)', custom_questions, is_active
-                    FROM forms
-                    WHERE id = @FormId
-                    RETURNING id
-                )
-                SELECT id FROM form_copy;";
+            var getFormQuery = "SELECT name, client_id, template_id, is_active FROM forms WHERE id = @FormId";
+            var insertFormQuery = @"
+        INSERT INTO forms (name, client_id, template_id, is_active, created_at, updated_at)
+        VALUES (@Name || ' 2', @ClientId, @TemplateId, @IsActive, NOW(), NOW())
+        RETURNING id;";
+            var duplicateFieldsQuery = @"
+        INSERT INTO form_fields (form_id, name, type, label, required, ordenation, options, field_type_id)
+        SELECT @NewFormId, name, type, label, required, ordenation, options, field_type_id
+        FROM form_fields
+        WHERE form_id = @OriginalFormId;";
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                using (var transaction = await connection.BeginTransactionAsync())
                 {
-                    command.Parameters.AddWithValue("@FormId", formId);
-                    newFormId = (int)await command.ExecuteScalarAsync();
+                    try
+                    {
+                        // Buscar dados do formulário original
+                        using var getFormCommand = new NpgsqlCommand(getFormQuery, connection, transaction);
+                        getFormCommand.Parameters.AddWithValue("@FormId", formId);
+
+                        using var reader = await getFormCommand.ExecuteReaderAsync();
+                        if (!reader.HasRows)
+                        {
+                            throw new Exception("Formulário não encontrado.");
+                        }
+
+                        await reader.ReadAsync();
+                        var name = reader.GetString(0);
+                        var clientId = reader.IsDBNull(1) ? (int?)null : reader.GetInt32(1);
+                        var templateId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
+                        var isActive = reader.GetBoolean(3);
+                        await reader.CloseAsync();
+
+                        // Inserir novo formulário
+                        int newFormId;
+                        using (var insertFormCommand = new NpgsqlCommand(insertFormQuery, connection, transaction))
+                        {
+                            insertFormCommand.Parameters.AddWithValue("@Name", name);
+                            insertFormCommand.Parameters.AddWithValue("@ClientId", clientId ?? (object)DBNull.Value);
+                            insertFormCommand.Parameters.AddWithValue("@TemplateId", templateId ?? (object)DBNull.Value);
+                            insertFormCommand.Parameters.AddWithValue("@IsActive", isActive);
+
+                            newFormId = (int)await insertFormCommand.ExecuteScalarAsync();
+                        }
+
+                        // Duplicar campos do formulário original
+                        using (var duplicateFieldsCommand = new NpgsqlCommand(duplicateFieldsQuery, connection, transaction))
+                        {
+                            duplicateFieldsCommand.Parameters.AddWithValue("@NewFormId", newFormId);
+                            duplicateFieldsCommand.Parameters.AddWithValue("@OriginalFormId", formId);
+                            await duplicateFieldsCommand.ExecuteNonQueryAsync();
+                        }
+
+                        // Confirmar transação
+                        await transaction.CommitAsync();
+                        return true;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
                 }
             }
-
-            return newFormId;
         }
+
+
 
         public async Task RenameFormAsync(int formId, string newName)
         {
