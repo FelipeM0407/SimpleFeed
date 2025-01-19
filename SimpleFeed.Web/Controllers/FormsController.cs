@@ -36,11 +36,11 @@ namespace SimpleFeed.Web.Controllers
             return Ok(new { NewFormId = newFormId });
         }
 
-        [HttpPatch("{formId}/rename")]
-        public async Task<IActionResult> RenameForm(int formId, [FromBody] string newName)
+        [HttpPost("{formId}/rename")]
+        public async Task<IActionResult> RenameForm(int formId, [FromBody] RenameFormDto renameFormDto)
         {
-            await _formService.RenameFormAsync(formId, newName);
-            return NoContent();
+            await _formService.RenameFormAsync(formId, renameFormDto.Name);
+            return Ok();
         }
 
         [HttpDelete("{formId}")]

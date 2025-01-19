@@ -62,7 +62,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             var getFormQuery = "SELECT name, client_id, template_id, is_active FROM forms WHERE id = @FormId";
             var insertFormQuery = @"
         INSERT INTO forms (name, client_id, template_id, is_active, created_at, updated_at)
-        VALUES (@Name || ' 2', @ClientId, @TemplateId, @IsActive, NOW(), NOW())
+        VALUES (@Name, @ClientId, @TemplateId, @IsActive, NOW(), NOW())
         RETURNING id;";
             var duplicateFieldsQuery = @"
         INSERT INTO form_fields (form_id, name, type, label, required, ordenation, options, field_type_id)
