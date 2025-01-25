@@ -75,6 +75,13 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Password.RequiredUniqueChars = 1; // Exige pelo menos 1 caractere único
 });
 
+// Configurar a política de cookies
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.CheckConsentNeeded = context => false; // Não exige consentimento do usuário
+    options.MinimumSameSitePolicy = SameSiteMode.None; // Permitir Cross-Origin
+});
+
 
 builder.Services.AddSingleton(provider =>
     builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -86,6 +93,7 @@ builder.Services.AddScoped<IFieldTypeRepository, FieldTypeRepository>();
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<ITemplateRepository, TemplateRepository>();
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
+builder.Services.AddScoped<IFeedbackFormRepository, FeedbackFormRepository>();
 
 
 // Registrar serviços
@@ -95,6 +103,7 @@ builder.Services.AddScoped<FieldTypeService>();
 builder.Services.AddScoped<ClientService>();
 builder.Services.AddScoped<TemplateService>();
 builder.Services.AddScoped<ClientService>();
+builder.Services.AddScoped<FeedbackFormService>();
 
 
 builder.Services.AddControllers();
@@ -148,8 +157,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseRouting();
 app.UseCors("AllowAll");
+app.UseRouting();
+app.UseCookiePolicy(); // Aplica a política de cookies
+
 app.UseAuthorization();
 app.MapControllers();
 
