@@ -56,7 +56,8 @@ namespace SimpleFeed.Web.Controllers
             var formId = await _formService.CreateFormAsync(formDto);
             return CreatedAtAction(nameof(CreateForm), new { id = formId }, new { FormId = formId });
         }
-
+        
+        [AllowAnonymous]
         [HttpGet("{formId}/structure")]
         public async Task<IActionResult> GetFormStructure(int formId)
         {
