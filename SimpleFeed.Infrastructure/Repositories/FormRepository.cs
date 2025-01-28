@@ -280,8 +280,9 @@ namespace SimpleFeed.Infrastructure.Repositories
             var fields = new List<FormFieldDto>();
 
             var query = @"
-                SELECT id, name, label, type, required, ordenation, options
-                FROM form_fields
+                SELECT ff.id, ff.name, ff.label, ff.type, ff.required, ff.ordenation, ff.options, fr.client_id
+                FROM form_fields ff
+                INNER JOIN forms fr ON fr.id = ff.form_id
                 WHERE form_id = @Form_Id";
 
             using (var connection = new NpgsqlConnection(_connectionString))
@@ -303,7 +304,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 Label = reader.GetString(reader.GetOrdinal("label")),
                                 Required = reader.GetBoolean(reader.GetOrdinal("required")),
                                 Options = reader["options"]?.ToString(),
-                                Ordenation = reader.GetInt32(reader.GetOrdinal("ordenation"))
+                                Ordenation = reader.GetInt32(reader.GetOrdinal("ordenation")),
+                                Client_Id = reader.GetInt32(reader.GetOrdinal("client_id"))
                             });
                         }
                     }
