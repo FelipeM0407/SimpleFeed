@@ -19,23 +19,6 @@ namespace SimpleFeed.Web.Controllers
             _feedbackFormService = feedbackFormService;
         }
 
-        [HttpGet("{formId}/{uniqueId}/check")]
-        public async Task<IActionResult> CheckAccess(string formId)
-        {
-            try
-            {
-                var result = await _feedbackFormService.CheckAccessAsync(formId);
-                if (!result)
-                    return Forbid("Você já respondeu a este formulário hoje.");
-
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
         [HttpGet("{formId}/{uniqueId}")]
         public async Task<IActionResult> LoadForm(string formId, string uniqueId)
         {
@@ -53,24 +36,13 @@ namespace SimpleFeed.Web.Controllers
             }
         }
 
-        [HttpPost("{formId}/feedback")]
-        public async Task<IActionResult> SubmitFeedback(string formId, [FromBody] FeedbackInputDto feedback)
+        [HttpPost("feedback")]
+        public async Task<IActionResult> SubmitFeedback([FromBody] FeedbackInputDto feedback)
         {
             try
             {
-                await _feedbackFormService.SubmitFeedbackAsync(formId, feedback);
-
-                // Configurar o cookie com duração de 24 horas
-                var cookieOptions = new CookieOptions
-                {
-                    Expires = DateTime.UtcNow.AddHours(24),
-                    HttpOnly = false,
-                    Secure = true
-                };
-
-                Response.Cookies.Append($"feedback_{formId}", "submitted", cookieOptions);
-
-                return Ok("Feedback enviado com sucesso!");
+                await _feedbackFormService.SubmitFeedbackAsync(feedback);
+                return Ok();
             }
             catch (Exception ex)
             {

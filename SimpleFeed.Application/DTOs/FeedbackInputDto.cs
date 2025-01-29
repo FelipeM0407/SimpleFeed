@@ -7,10 +7,9 @@ namespace SimpleFeed.Application.DTOs
 {
     public class FeedbackInputDto
     {
-        public int FormId { get; set; } // ID do formulário respondido
-        public string Answers { get; set; } // Respostas do formulário (JSON formatado como string)
-        public string IpAddress { get; set; } // Endereço IP do usuário
-        public Guid UniqueId { get; set; } // Identificador único do usuário
+        public int Form_Id { get; set; }
+        public int Client_id { get; set; }
+        public object Answers { get; set; }
 
     }
 }

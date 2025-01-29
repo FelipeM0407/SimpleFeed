@@ -28,10 +28,10 @@ namespace SimpleFeed.Application.Services
             return await _feedbackFormRepository.GetFormAsync(formId, uniqueId);
         }
 
-        public async Task SubmitFeedbackAsync(string formId, FeedbackInputDto feedback)
+        public async Task SubmitFeedbackAsync(FeedbackInputDto feedback)
         {
             // Salvar feedback no banco
-            await _feedbackFormRepository.SaveFeedbackAsync(formId, feedback);
+            await _feedbackFormRepository.SaveFeedbackAsync(feedback);
         }
     }
 }

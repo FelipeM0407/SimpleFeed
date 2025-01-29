@@ -26,14 +26,14 @@ namespace SimpleFeed.Infrastructure.Repositories
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
-            await connection.OpenAsync();
-            using (var command = new NpgsqlCommand(query, connection))
-            {
-                command.Parameters.AddWithValue("@FormId", formId);
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FormId", formId);
 
-                var count = (int)await command.ExecuteScalarAsync();
-                return count == 0; // Retorna true se o acesso é permitido (não há resposta anterior)
-            }
+                    var count = (int)await command.ExecuteScalarAsync();
+                    return count == 0; // Retorna true se o acesso é permitido (não há resposta anterior)
+                }
             }
         }
 
@@ -71,24 +71,31 @@ namespace SimpleFeed.Infrastructure.Repositories
             return null; // Retorna null se o formulário não for encontrado
         }
 
-        public async Task SaveFeedbackAsync(string formId, FeedbackInputDto feedback)
+        public async Task SaveFeedbackAsync(FeedbackInputDto feedback)
         {
             var query = @"
-                INSERT INTO feedbacks (form_id, answers, submitted_at, unique_id, ip_address)
-                VALUES (@FormId, @Answers, NOW(), @UniqueId, @IpAddress)";
+            INSERT INTO feedbacks (client_id, form_id, answers, is_new, submitted_at)
+            VALUES (@Client_id, @FormId, @Answers, true, NOW())";
 
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    command.Parameters.AddWithValue("@FormId", formId);
-                    command.Parameters.AddWithValue("@Answers", feedback.Answers);
-                    command.Parameters.AddWithValue("@UniqueId", feedback.UniqueId);
-                    command.Parameters.AddWithValue("@IpAddress", feedback.IpAddress);
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", feedback.Form_Id);
+                        command.Parameters.AddWithValue("@Client_id", feedback.Client_id);
+                        command.Parameters.AddWithValue("@Answers", feedback.Answers);
 
-                    await command.ExecuteNonQueryAsync(); // Executa a inserção no banco de dados
+                        await command.ExecuteNonQueryAsync();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while saving feedback.", ex);
             }
         }
     }

@@ -10,6 +10,6 @@ namespace SimpleFeed.Application.Interfaces
     {
         Task<bool> CheckAccessAsync(string formId);
         Task<FormDetailDto> GetFormAsync(string formId, string uniqueId);
-        Task SaveFeedbackAsync(string formId, FeedbackInputDto feedback);
+        Task SaveFeedbackAsync(FeedbackInputDto feedback);
     }
 }
