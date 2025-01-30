@@ -29,10 +29,10 @@ namespace SimpleFeed.Web.Controllers
             return Ok(result);
         }
 
-        [HttpPost("{formId}/duplicate")]
-        public async Task<IActionResult> DuplicateForm(int formId)
+        [HttpPost("{formId}/{formName}/duplicate")]
+        public async Task<IActionResult> DuplicateForm(int formId, string formName)
         {
-            var newFormId = await _formService.DuplicateFormAsync(formId);
+            var newFormId = await _formService.DuplicateFormAsync(formId, formName);
             return Ok(new { NewFormId = newFormId });
         }
 

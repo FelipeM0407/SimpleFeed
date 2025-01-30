@@ -57,7 +57,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             return forms;
         }
 
-        public async Task<bool> DuplicateFormAsync(int formId)
+        public async Task<bool> DuplicateFormAsync(int formId, string formName)
         {
             var getFormQuery = "SELECT name, client_id, template_id, is_active FROM forms WHERE id = @FormId";
             var insertFormQuery = @"
@@ -98,7 +98,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                         int newFormId;
                         using (var insertFormCommand = new NpgsqlCommand(insertFormQuery, connection, transaction))
                         {
-                            insertFormCommand.Parameters.AddWithValue("@Name", name);
+                            insertFormCommand.Parameters.AddWithValue("@Name", formName);
                             insertFormCommand.Parameters.AddWithValue("@ClientId", clientId ?? (object)DBNull.Value);
                             insertFormCommand.Parameters.AddWithValue("@TemplateId", templateId ?? (object)DBNull.Value);
                             insertFormCommand.Parameters.AddWithValue("@IsActive", isActive);
