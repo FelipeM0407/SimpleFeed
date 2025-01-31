@@ -56,7 +56,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving feedbacks by form ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar os feedbacks pelo ID do formulário.", ex);
             }
         }
 
@@ -82,7 +82,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while marking feedbacks as read.", ex);
+                throw new Exception("Ocorreu um erro ao marcar os feedbacks como lidos.", ex);
             }
         }
 
@@ -138,7 +138,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while filtering feedbacks.", ex);
+                throw new Exception("Ocorreu um erro ao filtrar os feedbacks.", ex);
             }
         }
 
@@ -161,7 +161,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while deleting feedbacks.", ex);
+                throw new Exception("Ocorreu um erro ao deletar os feedbacks.", ex);
             }
         }
     }

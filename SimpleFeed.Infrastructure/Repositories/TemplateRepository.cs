@@ -59,7 +59,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving templates by plan ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar os templates pelo ID do plano.", ex);
             }
         }
 
@@ -104,7 +104,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving template by ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar o template pelo ID.", ex);
             }
         }
 
@@ -148,7 +148,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving templates by client ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar os templates pelo ID do cliente.", ex);
             }
         }
     }

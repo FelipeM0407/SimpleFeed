@@ -32,12 +32,12 @@ namespace SimpleFeed.Infrastructure.Repositories
                 using var command = new NpgsqlCommand(query, connection);
                 command.Parameters.AddWithValue("@ClientId", clientId);
 
-                return (int)(await command.ExecuteScalarAsync() ?? throw new KeyNotFoundException("Client not found."));
+                return (int)(await command.ExecuteScalarAsync() ?? throw new KeyNotFoundException("Cliente não encontrado."));
             }
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving the client plan ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar o ID do plano do cliente.", ex);
             }
         }
 
@@ -83,7 +83,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving the client by GUID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar o cliente pelo GUID.", ex);
             }
         }
     }

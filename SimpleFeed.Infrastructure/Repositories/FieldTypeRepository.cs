@@ -56,7 +56,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving field types.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar os tipos de campo.", ex);
             }
         }
 
@@ -103,7 +103,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving field types by client ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar os tipos de campo pelo ID do cliente.", ex);
             }
         }
     }

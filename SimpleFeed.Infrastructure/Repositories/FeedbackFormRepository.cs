@@ -41,7 +41,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while checking access.", ex);
+                throw new Exception("Ocorreu um erro ao verificar o acesso.", ex);
             }
         }
 
@@ -83,7 +83,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving the form.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar o formulário.", ex);
             }
         }
 
@@ -111,7 +111,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while saving feedback.", ex);
+                throw new Exception("Ocorreu um erro ao salvar o feedback.", ex);
             }
         }
     }

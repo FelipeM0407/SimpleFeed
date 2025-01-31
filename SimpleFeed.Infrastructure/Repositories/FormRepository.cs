@@ -61,7 +61,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving active forms with responses.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar formulários ativos com respostas.", ex);
             }
         }
 
@@ -140,7 +140,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while duplicating the form.", ex);
+                throw new Exception("Ocorreu um erro ao duplicar o formulário.", ex);
             }
         }
 
@@ -166,7 +166,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while renaming the form.", ex);
+                throw new Exception("Ocorreu um erro ao renomear o formulário.", ex);
             }
         }
 
@@ -191,7 +191,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while deleting the form with feedbacks.", ex);
+                throw new Exception("Ocorreu um erro ao excluir o formulário com feedbacks.", ex);
             }
         }
 
@@ -258,7 +258,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while creating the form.", ex);
+                throw new Exception("Ocorreu um erro ao criar o formulário.", ex);
             }
         }
 
@@ -299,7 +299,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving template by ID.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar o template pelo ID.", ex);
             }
         }
 
@@ -327,7 +327,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving the client plan.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar o plano do cliente.", ex);
             }
         }
 
@@ -374,7 +374,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while retrieving the form structure.", ex);
+                throw new Exception("Ocorreu um erro ao recuperar a estrutura do formulário.", ex);
             }
         }
 
@@ -401,7 +401,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while validating the existence of feedbacks.", ex);
+                throw new Exception("Ocorreu um erro ao validar a existência de feedbacks.", ex);
             }
         }
 
@@ -556,7 +556,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 // Log the exception or handle it as needed
-                throw new Exception("An error occurred while saving form edits.", ex);
+                throw new Exception("Ocorreu um erro ao salvar as edições do formulário.", ex);
             }
         }
     }
