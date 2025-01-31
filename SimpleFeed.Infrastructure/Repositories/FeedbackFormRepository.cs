@@ -19,66 +19,82 @@ namespace SimpleFeed.Infrastructure.Repositories
 
         public async Task<bool> CheckAccessAsync(string formId)
         {
-            var query = @"
-            SELECT COUNT(*) 
-            FROM feedbacks 
-            WHERE form_id = @FormId AND created_at::date = CURRENT_DATE";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@FormId", formId);
+                var query = @"
+                SELECT COUNT(*) 
+                FROM feedbacks 
+                WHERE form_id = @FormId AND created_at::date = CURRENT_DATE";
 
-                    var count = (int)await command.ExecuteScalarAsync();
-                    return count == 0; // Retorna true se o acesso é permitido (não há resposta anterior)
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", formId);
+
+                        var count = (int)await command.ExecuteScalarAsync();
+                        return count == 0; // Retorna true se o acesso é permitido (não há resposta anterior)
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while checking access.", ex);
             }
         }
 
         public async Task<FormDetailDto> GetFormAsync(string formId, string uniqueId)
         {
-            var query = @"
-                SELECT f.id, f.name, f.is_active, f.created_at, f.updated_at
-                FROM forms f
-                WHERE f.id = @FormId";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@FormId", formId);
+                var query = @"
+                    SELECT f.id, f.name, f.is_active, f.created_at, f.updated_at
+                    FROM forms f
+                    WHERE f.id = @FormId";
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        if (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@FormId", formId);
+
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            return new FormDetailDto
+                            if (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader["name"]?.ToString(),
-                                IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
-                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
-                                UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at"))
-                            };
+                                return new FormDetailDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Name = reader["name"]?.ToString(),
+                                    IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                                    UpdatedAt = reader.GetDateTime(reader.GetOrdinal("updated_at"))
+                                };
+                            }
                         }
                     }
                 }
-            }
 
-            return null; // Retorna null se o formulário não for encontrado
+                return null; // Retorna null se o formulário não for encontrado
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving the form.", ex);
+            }
         }
 
         public async Task SaveFeedbackAsync(FeedbackInputDto feedback)
         {
-            var query = @"
-            INSERT INTO feedbacks (client_id, form_id, answers, is_new, submitted_at)
-            VALUES (@Client_id, @FormId, @Answers, true, NOW())";
-
             try
             {
+                var query = @"
+                INSERT INTO feedbacks (client_id, form_id, answers, is_new, submitted_at)
+                VALUES (@Client_id, @FormId, @Answers, true, NOW())";
+
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();

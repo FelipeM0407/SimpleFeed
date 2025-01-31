@@ -19,118 +19,149 @@ namespace SimpleFeed.Infrastructure.Repositories
 
         public async Task<IEnumerable<FeedbackDetailDto>> GetFeedbacksByFormAsync(int formId)
         {
-
-            var feedbacks = new List<FeedbackDetailDto>();
-
-            var query = @"
-                SELECT f.id, f.answers, f.submitted_at, f.is_new
-                FROM feedbacks f
-                WHERE f.form_id = @FormId";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@FormId", formId);
+                var feedbacks = new List<FeedbackDetailDto>();
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                var query = @"
+                    SELECT f.id, f.answers, f.submitted_at, f.is_new
+                    FROM feedbacks f
+                    WHERE f.form_id = @FormId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        while (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@FormId", formId);
+
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            feedbacks.Add(new FeedbackDetailDto
+                            while (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Answers = reader["answers"]?.ToString() ?? "[]",
-                                Submitted_At = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
-                                IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
-                            });
+                                feedbacks.Add(new FeedbackDetailDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Answers = reader["answers"]?.ToString() ?? "[]",
+                                    Submitted_At = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
+                                    IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
+                                });
+                            }
                         }
                     }
                 }
-            }
 
-            return feedbacks;
+                return feedbacks;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving feedbacks by form ID.", ex);
+            }
         }
 
         public async Task MarkFeedbacksAsReadAsync(int formId)
         {
-            var query = @"
-                UPDATE feedbacks
-                SET is_new = FALSE
-                WHERE form_id = @FormId AND is_new = TRUE";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                var query = @"
+                    UPDATE feedbacks
+                    SET is_new = FALSE
+                    WHERE form_id = @FormId AND is_new = TRUE";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    command.Parameters.AddWithValue("@FormId", formId);
-                    await command.ExecuteNonQueryAsync();
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", formId);
+                        await command.ExecuteNonQueryAsync();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while marking feedbacks as read.", ex);
             }
         }
 
         public async Task<IEnumerable<FeedbackDetailDto>> FilterFeedbacksAsync(int formId, DateTime? submitted_Start, DateTime? submitted_End)
         {
-            var feedbacks = new List<FeedbackDetailDto>();
-
-            var query = @"
-                SELECT f.id, f.answers, f.submitted_at, f.is_new
-                FROM feedbacks f
-                WHERE f.form_id = @FormId";
-
-            if (submitted_Start.HasValue && submitted_End.HasValue)
+            try
             {
-                query += " AND DATE(f.submitted_at) BETWEEN DATE(@SubmittedStart) AND DATE(@SubmittedEnd)";
-            }
+                var feedbacks = new List<FeedbackDetailDto>();
 
-            query += " ORDER BY f.submitted_at DESC";
+                var query = @"
+                    SELECT f.id, f.answers, f.submitted_at, f.is_new
+                    FROM feedbacks f
+                    WHERE f.form_id = @FormId";
 
-            using (var connection = new NpgsqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                if (submitted_Start.HasValue && submitted_End.HasValue)
                 {
-                    command.Parameters.AddWithValue("@FormId", formId);
+                    query += " AND DATE(f.submitted_at) BETWEEN DATE(@SubmittedStart) AND DATE(@SubmittedEnd)";
+                }
 
-                    if (submitted_Start.HasValue && submitted_End.HasValue)
-                    {
-                        command.Parameters.AddWithValue("@SubmittedStart", submitted_Start);
-                        command.Parameters.AddWithValue("@SubmittedEnd", submitted_End);
-                    }
+                query += " ORDER BY f.submitted_at DESC";
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        while (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@FormId", formId);
+
+                        if (submitted_Start.HasValue && submitted_End.HasValue)
                         {
-                            feedbacks.Add(new FeedbackDetailDto
+                            command.Parameters.AddWithValue("@SubmittedStart", submitted_Start);
+                            command.Parameters.AddWithValue("@SubmittedEnd", submitted_End);
+                        }
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Answers = reader["answers"]?.ToString() ?? "[]",
-                                Submitted_At = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
-                                IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
-                            });
+                                feedbacks.Add(new FeedbackDetailDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Answers = reader["answers"]?.ToString() ?? "[]",
+                                    Submitted_At = reader.GetDateTime(reader.GetOrdinal("submitted_at")),
+                                    IsNew = reader.GetBoolean(reader.GetOrdinal("is_new"))
+                                });
+                            }
                         }
                     }
                 }
-            }
 
-            return feedbacks;
+                return feedbacks;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while filtering feedbacks.", ex);
+            }
         }
 
         public async Task DeleteFeedbacksAsync(int[] feedbackIds)
         {
-            var query = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                var query = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    command.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
-                    await command.ExecuteNonQueryAsync();
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
+                        await command.ExecuteNonQueryAsync();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while deleting feedbacks.", ex);
             }
         }
     }

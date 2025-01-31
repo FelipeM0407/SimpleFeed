@@ -19,56 +19,72 @@ namespace SimpleFeed.Infrastructure.Repositories
 
         public async Task<int> GetClientPlanIdAsync(int clientId)
         {
-            const string query = @"
-                SELECT plan_id 
-                FROM clients 
-                WHERE id = @ClientId";
+            try
+            {
+                const string query = @"
+                    SELECT plan_id 
+                    FROM clients 
+                    WHERE id = @ClientId";
 
-            using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            using var command = new NpgsqlCommand(query, connection);
-            command.Parameters.AddWithValue("@ClientId", clientId);
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ClientId", clientId);
 
-            return (int)(await command.ExecuteScalarAsync() ?? throw new KeyNotFoundException("Client not found."));
+                return (int)(await command.ExecuteScalarAsync() ?? throw new KeyNotFoundException("Client not found."));
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving the client plan ID.", ex);
+            }
         }
 
         public async Task<ClientDto> GetClientByGuidAsync(Guid userId)
         {
-            ClientDto client = null;
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
+                ClientDto client = null;
 
-                using (var command = new NpgsqlCommand(
-                    @"SELECT ""Id"", ""Name"", ""PlanId"", ""ExpiryDate"", ""Cpf"", ""Cnpj"", ""CreatedAt"", ""UpdatedAt"" 
-                      FROM Clients 
-                      WHERE ""UserId"" = @UserId", connection))
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    command.Parameters.AddWithValue("@UserId", userId.ToString());
+                    await connection.OpenAsync();
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                    using (var command = new NpgsqlCommand(
+                        @"SELECT ""Id"", ""Name"", ""PlanId"", ""ExpiryDate"", ""Cpf"", ""Cnpj"", ""CreatedAt"", ""UpdatedAt"" 
+                          FROM Clients 
+                          WHERE ""UserId"" = @UserId", connection))
                     {
-                        if (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@UserId", userId.ToString());
+
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            client = new ClientDto
+                            if (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(0),
-                                Name = reader["Name"]?.ToString()?.Trim().Replace("\n", "").Replace("\r", ""),
-                                PlanId = reader.GetInt32(2),
-                                ExpiryDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
-                                Cpf = reader.IsDBNull(4) ? null : reader.GetString(4),
-                                Cnpj = reader.IsDBNull(5) ? null : reader.GetString(5),
-                                CreatedAt = reader.GetDateTime(6),
-                                UpdatedAt = reader.GetDateTime(7)
-                            };
+                                client = new ClientDto
+                                {
+                                    Id = reader.GetInt32(0),
+                                    Name = reader["Name"]?.ToString()?.Trim().Replace("\n", "").Replace("\r", ""),
+                                    PlanId = reader.GetInt32(2),
+                                    ExpiryDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                                    Cpf = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    Cnpj = reader.IsDBNull(5) ? null : reader.GetString(5),
+                                    CreatedAt = reader.GetDateTime(6),
+                                    UpdatedAt = reader.GetDateTime(7)
+                                };
+                            }
                         }
                     }
                 }
-            }
 
-            return client;
+                return client;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving the client by GUID.", ex);
+            }
         }
     }
 }

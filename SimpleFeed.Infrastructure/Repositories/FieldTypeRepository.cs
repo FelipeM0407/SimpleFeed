@@ -19,78 +19,92 @@ namespace SimpleFeed.Infrastructure.Repositories
 
         public async Task<IEnumerable<FieldTypeDto>> GetFieldTypesAsync()
         {
-            var fieldTypes = new List<FieldTypeDto>();
-
-            var query = @"
-                SELECT id, name, description, settings_schema, field_type, associated_plan
-                FROM field_types
-                ORDER BY id";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                var fieldTypes = new List<FieldTypeDto>();
+
+                var query = @"
+                    SELECT id, name, description, settings_schema, field_type, associated_plan
+                    FROM field_types
+                    ORDER BY id";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    using (var reader = await command.ExecuteReaderAsync())
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        while (await reader.ReadAsync())
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            fieldTypes.Add(new FieldTypeDto
+                            while (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader.GetString(reader.GetOrdinal("name")),
-                                Description = reader.GetString(reader.GetOrdinal("description")),
-                                FieldType = reader.GetString(reader.GetOrdinal("field_type")),
-                                SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),
-                                PlanId = reader.GetInt32(reader.GetOrdinal("associated_plan"))
-                            });
+                                fieldTypes.Add(new FieldTypeDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Name = reader.GetString(reader.GetOrdinal("name")),
+                                    Description = reader.GetString(reader.GetOrdinal("description")),
+                                    FieldType = reader.GetString(reader.GetOrdinal("field_type")),
+                                    SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),
+                                    PlanId = reader.GetInt32(reader.GetOrdinal("associated_plan"))
+                                });
+                            }
                         }
                     }
                 }
-            }
 
-            return fieldTypes;
+                return fieldTypes;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving field types.", ex);
+            }
         }
 
         public async Task<IEnumerable<FieldTypeDto>> GetFieldTypesByClientIdAsync(Guid clientId)
         {
-            var fieldTypes = new List<FieldTypeDto>();
-
-            var query = @"
-                SELECT ft.id, ft.name, ft.label, ft.description, ft.settings_schema, ft.field_type, ft.plan_id
-                FROM clients cl
-                INNER JOIN field_types ft ON ft.plan_id = cl.""PlanId""
-                WHERE cl.""UserId"" = @ClientId";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@ClientId", clientId.ToString());
+                var fieldTypes = new List<FieldTypeDto>();
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                var query = @"
+                    SELECT ft.id, ft.name, ft.label, ft.description, ft.settings_schema, ft.field_type, ft.plan_id
+                    FROM clients cl
+                    INNER JOIN field_types ft ON ft.plan_id = cl.""PlanId""
+                    WHERE cl.""UserId"" = @ClientId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        while (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@ClientId", clientId.ToString());
+
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            fieldTypes.Add(new FieldTypeDto
+                            while (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader.GetString(reader.GetOrdinal("name")),
-                                Label = reader.GetString(reader.GetOrdinal("label")),
-                                Description = reader.GetString(reader.GetOrdinal("description")),
-                                FieldType = reader.GetString(reader.GetOrdinal("field_type")),
-                                SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),
-                                PlanId = reader.GetInt32(reader.GetOrdinal("plan_id"))
-                            });
+                                fieldTypes.Add(new FieldTypeDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Name = reader.GetString(reader.GetOrdinal("name")),
+                                    Label = reader.GetString(reader.GetOrdinal("label")),
+                                    Description = reader.GetString(reader.GetOrdinal("description")),
+                                    FieldType = reader.GetString(reader.GetOrdinal("field_type")),
+                                    SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),
+                                    PlanId = reader.GetInt32(reader.GetOrdinal("plan_id"))
+                                });
+                            }
                         }
                     }
                 }
+
+                return fieldTypes;
             }
-
-            return fieldTypes;
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving field types by client ID.", ex);
+            }
         }
-
-        
     }
 }

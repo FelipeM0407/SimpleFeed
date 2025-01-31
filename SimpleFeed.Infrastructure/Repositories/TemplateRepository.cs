@@ -20,112 +20,136 @@ namespace SimpleFeed.Infrastructure.Repositories
 
         public async Task<IEnumerable<FormTemplateDto>> GetTemplatesByPlanIdAsync(int planId)
         {
-            var templates = new List<FormTemplateDto>();
-
-            var query = @"
-                SELECT id, name, description, fields, plan_id, created_at, updated_at
-                FROM form_templates
-                WHERE plan_id = @PlanId";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                var templates = new List<FormTemplateDto>();
+
+                var query = @"
+                    SELECT id, name, description, fields, plan_id, created_at, updated_at
+                    FROM form_templates
+                    WHERE plan_id = @PlanId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    command.Parameters.AddWithValue("@PlanId", planId);
-
-                    using (var reader = await command.ExecuteReaderAsync())
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        while (await reader.ReadAsync())
-                        {
-                            templates.Add(new FormTemplateDto
-                            {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader.GetString(reader.GetOrdinal("name")),
-                                Description = reader.GetString(reader.GetOrdinal("description")),
-                                PlanId = reader.GetInt32(reader.GetOrdinal("plan_id")),
-                                Fields = reader["fields"] != DBNull.Value ? reader["fields"].ToString() : "[]"
+                        command.Parameters.AddWithValue("@PlanId", planId);
 
-                            });
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                templates.Add(new FormTemplateDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Name = reader.GetString(reader.GetOrdinal("name")),
+                                    Description = reader.GetString(reader.GetOrdinal("description")),
+                                    PlanId = reader.GetInt32(reader.GetOrdinal("plan_id")),
+                                    Fields = reader["fields"] != DBNull.Value ? reader["fields"].ToString() : "[]"
+
+                                });
+                            }
                         }
                     }
                 }
-            }
 
-            return templates;
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving templates by plan ID.", ex);
+            }
         }
 
         public async Task<FormTemplateDto?> GetTemplateByIdAsync(int templateId)
         {
-            FormTemplateDto? template = null;
-
-            var query = @"
-                SELECT id, name, description, fields, plan_id, created_at, updated_at
-                FROM form_templates
-                WHERE id = @TemplateId";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
+                FormTemplateDto? template = null;
+
+                var query = @"
+                    SELECT id, name, description, fields, plan_id, created_at, updated_at
+                    FROM form_templates
+                    WHERE id = @TemplateId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    command.Parameters.AddWithValue("@TemplateId", templateId);
-
-                    using (var reader = await command.ExecuteReaderAsync())
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        if (await reader.ReadAsync())
-                        {
-                            template = new FormTemplateDto
-                            {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader.GetString(reader.GetOrdinal("name")),
-                                Description = reader.GetString(reader.GetOrdinal("description")),
-                                PlanId = reader.GetInt32(reader.GetOrdinal("plan_id")),
-                                Fields = reader["fields"] != DBNull.Value ? reader["fields"].ToString() : "[]"
+                        command.Parameters.AddWithValue("@TemplateId", templateId);
 
-                            };
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                template = new FormTemplateDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Name = reader.GetString(reader.GetOrdinal("name")),
+                                    Description = reader.GetString(reader.GetOrdinal("description")),
+                                    PlanId = reader.GetInt32(reader.GetOrdinal("plan_id")),
+                                    Fields = reader["fields"] != DBNull.Value ? reader["fields"].ToString() : "[]"
+
+                                };
+                            }
                         }
                     }
                 }
-            }
 
-            return template;
+                return template;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving template by ID.", ex);
+            }
         }
 
         public async Task<IEnumerable<FormTemplateDto>> GetTemplatesByClientIdAsync(Guid clientId)
         {
-            var templates = new List<FormTemplateDto>();
-
-            var query = @"
-                SELECT ft.id, ft.name, ft.description, ft.fields
-                FROM clients cl
-                INNER JOIN form_templates ft ON ft.plan_id = cl.""PlanId""
-                WHERE cl.""UserId"" = @ClientId";
-
-            using (var connection = new NpgsqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@ClientId", clientId.ToString());
+                var templates = new List<FormTemplateDto>();
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                var query = @"
+                    SELECT ft.id, ft.name, ft.description, ft.fields
+                    FROM clients cl
+                    INNER JOIN form_templates ft ON ft.plan_id = cl.""PlanId""
+                    WHERE cl.""UserId"" = @ClientId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                        while (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@ClientId", clientId.ToString());
+
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            templates.Add(new FormTemplateDto
+                            while (await reader.ReadAsync())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                Name = reader.GetString(reader.GetOrdinal("name")),
-                                Description = reader.GetString(reader.GetOrdinal("description")),
-                                Fields = reader.GetString(reader.GetOrdinal("fields"))
-                            });
+                                templates.Add(new FormTemplateDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    Name = reader.GetString(reader.GetOrdinal("name")),
+                                    Description = reader.GetString(reader.GetOrdinal("description")),
+                                    Fields = reader.GetString(reader.GetOrdinal("fields"))
+                                });
+                            }
                         }
                     }
                 }
-            }
 
-            return templates;
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("An error occurred while retrieving templates by client ID.", ex);
+            }
         }
     }
 }
