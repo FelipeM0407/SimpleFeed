@@ -410,9 +410,9 @@ namespace SimpleFeed.Infrastructure.Repositories
             try
             {
                 var formQuery = @"
-        UPDATE forms
-        SET updated_at = NOW()
-        WHERE id = @FormId";
+                        UPDATE forms
+                        SET updated_at = NOW()
+                        WHERE id = @FormId";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -441,20 +441,20 @@ namespace SimpleFeed.Infrastructure.Repositories
 
                                 // Remove objetos correspondentes dos feedbacks, apenas se houver FieldsDeletedsWithFeedbacks
                                 var updateFeedbacksQuery = @"
-                        WITH updated_answers AS (
-                            SELECT id, jsonb_agg(answer) AS new_answers
-                            FROM (
-                                SELECT id, jsonb_array_elements(answers) AS answer
-                                FROM feedbacks
-                                WHERE form_id = @FormId
-                            ) sub
-                            WHERE NOT (answer->>'id_form_field')::int = ANY(@FieldIds)
-                            GROUP BY id
-                        )
-                        UPDATE feedbacks
-                        SET answers = updated_answers.new_answers
-                        FROM updated_answers
-                        WHERE feedbacks.id = updated_answers.id;";
+                                        WITH updated_answers AS (
+                                            SELECT id, jsonb_agg(answer) AS new_answers
+                                            FROM (
+                                                SELECT id, jsonb_array_elements(answers) AS answer
+                                                FROM feedbacks
+                                                WHERE form_id = @FormId
+                                            ) sub
+                                            WHERE NOT (answer->>'id_form_field')::int = ANY(@FieldIds)
+                                            GROUP BY id
+                                        )
+                                        UPDATE feedbacks
+                                        SET answers = updated_answers.new_answers
+                                        FROM updated_answers
+                                        WHERE feedbacks.id = updated_answers.id;";
 
                                 using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
                                 {
@@ -469,7 +469,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
                                 using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
                                 {
-                                    deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
+                                    deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeleteds);
                                     await deleteFieldsCommand.ExecuteNonQueryAsync();
                                 }
                             }

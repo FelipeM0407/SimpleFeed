@@ -10,5 +10,6 @@ namespace SimpleFeed.Application.DTOs
         public int FormId { get; set; }
         public List<FormFieldDto> Fields { get; set; }
         public List<int> FieldsDeletedsWithFeedbacks { get; set; }
+        public List<int> FieldsDeleteds { get; set; }
     }
 }
