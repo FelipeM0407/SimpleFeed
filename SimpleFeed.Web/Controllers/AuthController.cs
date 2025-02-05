@@ -169,7 +169,7 @@ namespace SimpleFeed.Web.Controllers
                 issuer: _configuration["JwtSettings:Issuer"],
                 audience: _configuration["JwtSettings:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(60),
+                expires: DateTime.Now.AddDays(7),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
