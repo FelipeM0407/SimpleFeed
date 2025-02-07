@@ -31,8 +31,14 @@ namespace SimpleFeed.Web.Controllers
         [HttpPost("{formId}/filter")]
         public async Task<IActionResult> FilterFeedbacks(int formId, [FromBody] DateRangeDto dateRange)
         {
-            var start = DateTime.Parse(dateRange.Submitted_Start); 
-            var end = DateTime.Parse(dateRange.Submitted_End); 
+            DateTime? start = null;
+            DateTime? end = null;
+
+            if (!string.IsNullOrEmpty(dateRange.Submitted_Start) && !string.IsNullOrEmpty(dateRange.Submitted_End))
+            {
+                start = DateTime.Parse(dateRange.Submitted_Start);
+                end = DateTime.Parse(dateRange.Submitted_End);
+            }
 
             var feedbacks = await _feedbackService.FilterFeedbacksAsync(formId, start, end);
             return Ok(feedbacks);
