@@ -31,9 +31,13 @@ namespace SimpleFeed.Web.Controllers
         [HttpPost("{formId}/filter")]
         public async Task<IActionResult> FilterFeedbacks(int formId, [FromBody] DateRangeDto dateRange)
         {
-            var feedbacks = await _feedbackService.FilterFeedbacksAsync(formId, dateRange.Submitted_Start, dateRange.Submitted_End);
+            var start = DateTime.Parse(dateRange.Submitted_Start); 
+            var end = DateTime.Parse(dateRange.Submitted_End); 
+
+            var feedbacks = await _feedbackService.FilterFeedbacksAsync(formId, start, end);
             return Ok(feedbacks);
         }
+
 
         [HttpDelete("delete")]
         public async Task<IActionResult> DeleteFeedbacks([FromBody] int[] feedbackIds)
