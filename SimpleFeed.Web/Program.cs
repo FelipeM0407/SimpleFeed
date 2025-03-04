@@ -94,6 +94,7 @@ builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<ITemplateRepository, TemplateRepository>();
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IFeedbackFormRepository, FeedbackFormRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 
 
 // Registrar serviços
@@ -104,7 +105,7 @@ builder.Services.AddScoped<ClientService>();
 builder.Services.AddScoped<TemplateService>();
 builder.Services.AddScoped<ClientService>();
 builder.Services.AddScoped<FeedbackFormService>();
-
+builder.Services.AddScoped<AccountService>();
 
 builder.Services.AddControllers();
 
