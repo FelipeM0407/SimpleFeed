@@ -137,12 +137,16 @@ namespace SimpleFeed.Web.Controllers
             if (user == null)
                 return Unauthorized("User not found");
 
+            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.CurrentPassword);
+            if (!passwordCheck)
+                return Unauthorized("Senha Atual está incorreta!");
+
             var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
 
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
-            return Ok("Password changed successfully");
+            return Ok("Senha alterada com sucesso!");
         }
 
 
