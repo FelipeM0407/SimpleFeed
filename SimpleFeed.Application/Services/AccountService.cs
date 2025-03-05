@@ -21,5 +21,9 @@ namespace SimpleFeed.Application.Services
             return await _accountRepository.GetAccountByIdAsync(accountId);
         }
 
+        public async Task<bool> UpdateAccountAsync(Guid accountId, AccountDto accountDto)
+        {
+            return await _accountRepository.UpdateAccountAsync(accountId, accountDto);
+        }
     }
 }

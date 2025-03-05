@@ -9,5 +9,6 @@ namespace SimpleFeed.Application.Interfaces
     public interface IAccountRepository
     {
         Task<AccountDto> GetAccountByIdAsync(Guid accountId);
+        Task<bool> UpdateAccountAsync(Guid accountId, AccountDto accountDto);
     }
 }

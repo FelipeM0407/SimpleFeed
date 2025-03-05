@@ -67,5 +67,72 @@ namespace SimpleFeed.Infrastructure.Repositories
 
             return null;
         }
+
+        public async Task<bool> UpdateAccountAsync(Guid accountId, AccountDto accountDto)
+        {
+            try
+            {
+                using (var connection = new Npgsql.NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var transaction = await connection.BeginTransactionAsync())
+                    {
+                        try
+                        {
+                            var updateUserQuery = @"
+                                UPDATE ""AspNetUsers""
+                                SET ""FirstName"" = @FirstName,
+                                    ""LastName"" = @LastName,
+                                    ""Email"" = @Email,
+                                    ""PhoneNumber"" = @PhoneNumber,
+                                    ""UpdatedAt"" = NOW()
+                                WHERE ""Id"" = @UserGuid";
+
+                            var updateClientQuery = @"
+                                UPDATE ""Clients""
+                                SET ""Name"" = @Name,
+                                    ""Cpf"" = @Cpf,
+                                    ""Cnpj"" = @Cnpj,
+                                    ""UpdatedAt"" = NOW()
+                                WHERE ""UserId"" = @UserGuid";
+
+                            using (var updateUserCommand = new Npgsql.NpgsqlCommand(updateUserQuery, connection, transaction))
+                            {
+                                updateUserCommand.Parameters.AddWithValue("@FirstName", accountDto.FirstName);
+                                updateUserCommand.Parameters.AddWithValue("@LastName", accountDto.LastName);
+                                updateUserCommand.Parameters.AddWithValue("@Email", accountDto.Email);
+                                updateUserCommand.Parameters.AddWithValue("@PhoneNumber", accountDto.PhoneNumber);
+                                updateUserCommand.Parameters.AddWithValue("@UserGuid", accountId.ToString());
+
+                                await updateUserCommand.ExecuteNonQueryAsync();
+                            }
+
+                            using (var updateClientCommand = new Npgsql.NpgsqlCommand(updateClientQuery, connection, transaction))
+                            {
+                                updateClientCommand.Parameters.AddWithValue("@Name", accountDto.Name);
+                                updateClientCommand.Parameters.AddWithValue("@Cpf", string.IsNullOrWhiteSpace(accountDto.Cpf) ? (object)DBNull.Value : accountDto.Cpf);
+                                updateClientCommand.Parameters.AddWithValue("@Cnpj", string.IsNullOrWhiteSpace(accountDto.Cnpj) ? (object)DBNull.Value : accountDto.Cnpj);
+                                updateClientCommand.Parameters.AddWithValue("@UserGuid", accountId.ToString());
+
+                                await updateClientCommand.ExecuteNonQueryAsync();
+                            }
+
+                            await transaction.CommitAsync();
+                            return true;
+                        }
+                        catch (Exception)
+                        {
+                            await transaction.RollbackAsync();
+                            throw;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao atualizar a conta de usuário.", ex);
+            }
+        }
     }
 }

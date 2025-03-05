@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Services;
 
 namespace SimpleFeed.Web.Controllers
@@ -30,6 +31,26 @@ namespace SimpleFeed.Web.Controllers
             }
 
             return Ok(account);
+        }
+
+        [HttpPost("{accountId}")]
+        public async Task<IActionResult> UpdateAccount(Guid accountId, [FromBody] AccountDto accountDto)
+        {
+            try
+            {
+                var result = await _accountService.UpdateAccountAsync(accountId, accountDto);
+                if (!result)
+                {
+                    return NotFound(new { Message = "Account not found." });
+                }
+
+                return Ok(new { Message = "Account updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                return StatusCode(500, new { Message = "An error occurred while updating the account.", Details = ex.Message });
+            }
         }
     }
 }
