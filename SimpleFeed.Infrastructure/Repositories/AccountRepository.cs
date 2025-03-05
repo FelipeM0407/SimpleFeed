@@ -68,7 +68,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             return null;
         }
 
-        public async Task<bool> UpdateAccountAsync(Guid accountId, AccountDto accountDto)
+        public async Task<bool> UpdateAccountAsync(Guid accountId, UpdateAccountDTO accountDto)
         {
             try
             {
@@ -89,7 +89,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 WHERE ""Id"" = @UserGuid";
 
                             var updateClientQuery = @"
-                                UPDATE ""Clients""
+                                UPDATE Clients
                                 SET ""Name"" = @Name,
                                     ""Cpf"" = @Cpf,
                                     ""Cnpj"" = @Cnpj,
@@ -110,8 +110,21 @@ namespace SimpleFeed.Infrastructure.Repositories
                             using (var updateClientCommand = new Npgsql.NpgsqlCommand(updateClientQuery, connection, transaction))
                             {
                                 updateClientCommand.Parameters.AddWithValue("@Name", accountDto.Name);
-                                updateClientCommand.Parameters.AddWithValue("@Cpf", string.IsNullOrWhiteSpace(accountDto.Cpf) ? (object)DBNull.Value : accountDto.Cpf);
-                                updateClientCommand.Parameters.AddWithValue("@Cnpj", string.IsNullOrWhiteSpace(accountDto.Cnpj) ? (object)DBNull.Value : accountDto.Cnpj);
+                                if (accountDto.DocumentType == "CPF")
+                                {
+                                    updateClientCommand.Parameters.AddWithValue("@Cpf", string.IsNullOrWhiteSpace(accountDto.Document) ? (object)DBNull.Value : accountDto.Document);
+                                    updateClientCommand.Parameters.AddWithValue("@Cnpj", DBNull.Value);
+                                }
+                                else if (accountDto.DocumentType == "CNPJ")
+                                {
+                                    updateClientCommand.Parameters.AddWithValue("@Cpf", DBNull.Value);
+                                    updateClientCommand.Parameters.AddWithValue("@Cnpj", string.IsNullOrWhiteSpace(accountDto.Document) ? (object)DBNull.Value : accountDto.Document);
+                                }
+                                else
+                                {
+                                    updateClientCommand.Parameters.AddWithValue("@Cpf", DBNull.Value);
+                                    updateClientCommand.Parameters.AddWithValue("@Cnpj", DBNull.Value);
+                                }
                                 updateClientCommand.Parameters.AddWithValue("@UserGuid", accountId.ToString());
 
                                 await updateClientCommand.ExecuteNonQueryAsync();

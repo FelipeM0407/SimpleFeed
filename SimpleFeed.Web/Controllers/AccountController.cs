@@ -34,7 +34,7 @@ namespace SimpleFeed.Web.Controllers
         }
 
         [HttpPost("{accountId}")]
-        public async Task<IActionResult> UpdateAccount(Guid accountId, [FromBody] AccountDto accountDto)
+        public async Task<IActionResult> UpdateAccount(Guid accountId, [FromBody] UpdateAccountDTO accountDto)
         {
             try
             {
