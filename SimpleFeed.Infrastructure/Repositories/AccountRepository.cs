@@ -83,7 +83,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 UPDATE ""AspNetUsers""
                                 SET ""FirstName"" = @FirstName,
                                     ""LastName"" = @LastName,
-                                    ""Email"" = @Email,
+                                    -- ""Email"" = @Email,
                                     ""PhoneNumber"" = @PhoneNumber,
                                     ""UpdatedAt"" = NOW()
                                 WHERE ""Id"" = @UserGuid";
@@ -100,7 +100,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             {
                                 updateUserCommand.Parameters.AddWithValue("@FirstName", accountDto.FirstName);
                                 updateUserCommand.Parameters.AddWithValue("@LastName", accountDto.LastName);
-                                updateUserCommand.Parameters.AddWithValue("@Email", accountDto.Email);
+                                // updateUserCommand.Parameters.AddWithValue("@Email", accountDto.Email);
                                 updateUserCommand.Parameters.AddWithValue("@PhoneNumber", accountDto.PhoneNumber);
                                 updateUserCommand.Parameters.AddWithValue("@UserGuid", accountId.ToString());
 
