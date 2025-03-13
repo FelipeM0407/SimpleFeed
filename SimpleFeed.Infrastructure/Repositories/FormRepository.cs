@@ -26,11 +26,13 @@ namespace SimpleFeed.Infrastructure.Repositories
                 SELECT f.id AS Id, 
                     f.name AS Name, 
                     COUNT(fe.Id) AS ResponseCount,
-                    f.updated_at AS LastUpdated
+                    f.updated_at AS LastUpdated,
+                    f.created_at AS CreatedAt
                 FROM forms f
                 LEFT JOIN feedbacks fe ON fe.form_id = f.Id
                 WHERE f.client_id = @ClientId AND f.is_active = TRUE
-                GROUP BY f.Id, f.name, f.updated_at;";
+                GROUP BY f.Id, f.name, f.updated_at
+                ORDER BY F.created_at DESC;";
 
 
                 using (var connection = new NpgsqlConnection(_connectionString))
@@ -49,7 +51,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     Id = reader.GetInt32(reader.GetOrdinal("Id")),
                                     Name = reader["Name"].ToString(),
                                     ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
-                                    LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated"))
+                                    LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
                                 });
                             }
                         }

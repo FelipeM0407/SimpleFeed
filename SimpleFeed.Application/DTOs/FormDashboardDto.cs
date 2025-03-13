@@ -11,5 +11,7 @@ namespace SimpleFeed.Application.DTOs
         public string Name { get; set; }
         public int ResponseCount { get; set; }
         public DateTime LastUpdated { get; set; }
+        public DateTime CreatedAt { get; set; }
+
     }
 }
