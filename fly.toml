@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for simplefeed-api on 2025-03-19T16:33:41-03:00
+# fly.toml app configuration file generated for simplefeed on 2025-03-19T19:43:57Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'simplefeed-api'
+app = 'simplefeed'
 primary_region = 'gig'
 
 [build]
@@ -20,3 +20,4 @@ primary_region = 'gig'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 1024
