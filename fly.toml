@@ -1,19 +1,22 @@
-app = "simplefeed-api"
+# fly.toml app configuration file generated for simplefeed-api on 2025-03-19T16:33:41-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'simplefeed-api'
+primary_region = 'gig'
 
 [build]
-  dockerfile = "Dockerfile"
 
-[env]
-  PORT = "8080"
-
-[[services]]
+[http_service]
   internal_port = 8080
-  protocol = "tcp"
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
