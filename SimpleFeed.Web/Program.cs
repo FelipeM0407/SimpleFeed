@@ -12,17 +12,16 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar a porta corretamente
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://*:{port}");
+// var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+// builder.WebHost.UseUrls($"http://*:{port}");
 
 
-//---------------------------------PRODUÇÃO---------------------------------
-// builder.Services.AddSingleton(provider =>
-//     Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
-
-//---------------------------------DESENVOLVIMENTO---------------------------------
-builder.Services.AddSingleton(provider =>
-    Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
+// Ajustar variavel de ambiente conforme ambiente de execução
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(
+        Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV") //Ambiente DESENVOLVIMENTO
+        //Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD") //Ambiente PRODUÇÃO
+        ));  
 
 
 // Configurar o Identity
