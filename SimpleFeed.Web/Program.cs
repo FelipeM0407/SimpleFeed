@@ -24,6 +24,7 @@ var connectionString = string.IsNullOrEmpty(environment) || environment != "Deve
 
 if (string.IsNullOrEmpty(connectionString))
 {
+    Console.WriteLine("Ambiente de execução:" + environment);
     throw new Exception("❌ ERRO: A string de conexão não foi carregada corretamente!");
 }
 
