@@ -19,8 +19,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD")));
 
+builder.Services.AddSingleton(provider =>
+    Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
+
 // builder.Services.AddDbContext<ApplicationDbContext>(options =>
 //     options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV")));
+// builder.Services.AddSingleton(provider =>
+//     Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
 
 
 // Configurar o Identity
@@ -89,12 +94,6 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
     options.MinimumSameSitePolicy = SameSiteMode.None; // Permitir Cross-Origin
 });
 
-
-// builder.Services.AddSingleton(provider =>
-//     Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
-
-builder.Services.AddSingleton(provider =>
-    Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
 
 // Registrar repositórios
 builder.Services.AddScoped<IFormRepository, FormRepository>();
