@@ -19,11 +19,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Ajustar variavel de ambiente conforme ambiente de execução
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-    var connectionString = environment == "Development"
-        ? Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV") // Ambiente DESENVOLVIMENTO
-        : Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD") ?? 
-        Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"); // Ambiente PRODUÇÃO ou fallback
+    var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"); // Ambiente DESENVOLVIMENTO
+    // var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"); // Ambiente PRODUÇÃO
 
     options.UseNpgsql(connectionString);
 });
