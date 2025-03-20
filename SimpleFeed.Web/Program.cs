@@ -15,18 +15,20 @@ var builder = WebApplication.CreateBuilder(args);
 // var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 // builder.WebHost.UseUrls($"http://*:{port}");
 
+var configuration = builder.Configuration; // Obtém a configuração corretamente
 
-// Ajustar variavel de ambiente conforme ambiente de execução
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+var connectionString = environment == "Development"
+    ? configuration["CONNECTION_STRING_DEV"]
+    : configuration["CONNECTION_STRING_PROD"];
+
+if (string.IsNullOrEmpty(connectionString))
 {
-    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-    var connectionString = environment == "Development"
-        ? Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV") // Ambiente DESENVOLVIMENTO
-        : Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD") ?? 
-        Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"); // Ambiente PRODUÇÃO ou fallback
+    throw new Exception("❌ ERRO: A string de conexão não foi carregada corretamente!");
+}
 
-    options.UseNpgsql(connectionString);
-});
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 
 // Configurar o Identity
