@@ -15,9 +15,14 @@ var builder = WebApplication.CreateBuilder(args);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://*:{port}");
 
-// Configuração do DbContext para PostgreSQL
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));  // Usando PostgreSQL
+
+//---------------------------------PRODUÇÃO---------------------------------
+// builder.Services.AddSingleton(provider =>
+//     Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
+
+//---------------------------------DESENVOLVIMENTO---------------------------------
+builder.Services.AddSingleton(provider =>
+    Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
 
 
 // Configurar o Identity
