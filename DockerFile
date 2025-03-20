@@ -10,7 +10,7 @@ WORKDIR /src
 COPY ["SimpleFeed.Web.csproj", "./"]
 RUN dotnet restore "./SimpleFeed.Web.csproj"
 
-# Copiar todo o código do projeto
+# Copiar todo o código do projeto 
 COPY . .
 WORKDIR "/src"
 
