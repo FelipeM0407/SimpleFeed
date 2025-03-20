@@ -19,12 +19,25 @@ var builder = WebApplication.CreateBuilder(args);
 // Ajustar variavel de ambiente conforme ambiente de execução
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
-        ? Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD") // Ambiente PRODUÇÃO
-        : Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"); // Ambiente DESENVOLVIMENTO
+    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+    Console.WriteLine($"🔍 ASPNETCORE_ENVIRONMENT: {environment}");
+
+    var connectionString = environment == "Production"
+        ? Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD")
+        : Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV");
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        Console.WriteLine("❌ ERRO: A string de conexão não foi carregada corretamente!");
+    }
+    else
+    {
+        Console.WriteLine($"✅ String de conexão carregada: {connectionString}");
+    }
 
     options.UseNpgsql(connectionString);
 });
+
 
 
 // Configurar o Identity
