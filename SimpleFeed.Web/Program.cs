@@ -20,24 +20,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-    Console.WriteLine($"🔍 ASPNETCORE_ENVIRONMENT: {environment}");
-
-    var connectionString = environment == "Production"
-        ? Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD")
-        : Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV");
-
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        Console.WriteLine("❌ ERRO: A string de conexão não foi carregada corretamente!");
-    }
-    else
-    {
-        Console.WriteLine($"✅ String de conexão carregada: {connectionString}");
-    }
+    var connectionString = environment == "Development"
+        ? Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV") // Ambiente DESENVOLVIMENTO
+        : Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD") ?? 
+        Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"); // Ambiente PRODUÇÃO ou fallback
 
     options.UseNpgsql(connectionString);
 });
-
 
 
 // Configurar o Identity
