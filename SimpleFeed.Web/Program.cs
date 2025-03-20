@@ -87,8 +87,11 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 });
 
 
+// builder.Services.AddSingleton(provider =>
+//     Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
+
 builder.Services.AddSingleton(provider =>
-    builder.Configuration.GetConnectionString("DefaultConnection"));
+    Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
 
 // Registrar repositórios
 builder.Services.AddScoped<IFormRepository, FormRepository>();
