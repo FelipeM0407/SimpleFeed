@@ -17,10 +17,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 var configuration = builder.Configuration; // Obtém a configuração corretamente
 
-var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-var connectionString = environment == "Development"
-    ? configuration["CONNECTION_STRING_DEV"]
-    : configuration["CONNECTION_STRING_PROD"];
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+var connectionString = string.IsNullOrEmpty(environment) || environment != "Development"
+    ? configuration["CONNECTION_STRING_PROD"]
+    : configuration["CONNECTION_STRING_DEV"];
 
 if (string.IsNullOrEmpty(connectionString))
 {
