@@ -16,16 +16,24 @@ var builder = WebApplication.CreateBuilder(args);
 // builder.WebHost.UseUrls($"http://*:{port}");
 
 // Configurar o banco de dados
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD")));
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
-builder.Services.AddSingleton(provider =>
-    Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
+if (!string.IsNullOrEmpty(environment) && environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV")));
 
-// builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//     options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV")));
-// builder.Services.AddSingleton(provider =>
-//     Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
+    builder.Services.AddSingleton(provider =>
+        Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
+}
+else
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD")));
+
+    builder.Services.AddSingleton(provider =>
+        Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
+}
 
 
 // Configurar o Identity
