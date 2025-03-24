@@ -11,9 +11,29 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuração do DbContext para PostgreSQL
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));  // Usando PostgreSQL
+// Configurar a porta corretamente
+// var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+// builder.WebHost.UseUrls($"http://*:{port}");
+
+// Configurar o banco de dados
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+if (!string.IsNullOrEmpty(environment) && environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV")));
+
+    builder.Services.AddSingleton(provider =>
+        Environment.GetEnvironmentVariable("CONNECTION_STRING_DEV"));
+}
+else
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD")));
+
+    builder.Services.AddSingleton(provider =>
+        Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
+}
 
 
 // Configurar o Identity
@@ -82,9 +102,6 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
     options.MinimumSameSitePolicy = SameSiteMode.None; // Permitir Cross-Origin
 });
 
-
-builder.Services.AddSingleton(provider =>
-    builder.Configuration.GetConnectionString("DefaultConnection"));
 
 // Registrar repositórios
 builder.Services.AddScoped<IFormRepository, FormRepository>();
