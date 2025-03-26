@@ -60,21 +60,21 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task MarkFeedbacksAsReadAsync(int formId)
+        public async Task MarkFeedbacksAsReadAsync(int[] feedbacksId)
         {
             try
             {
                 var query = @"
                     UPDATE feedbacks
                     SET is_new = FALSE
-                    WHERE form_id = @FormId AND is_new = TRUE";
+                    WHERE id = ANY(@FeedbackIds)";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
                     using (var command = new NpgsqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
+                        command.Parameters.AddWithValue("@FeedbackIds", feedbacksId);
                         await command.ExecuteNonQueryAsync();
                     }
                 }

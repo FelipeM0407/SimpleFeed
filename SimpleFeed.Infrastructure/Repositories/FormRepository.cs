@@ -23,16 +23,18 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var forms = new List<FormDashboardDto>();
 
                 var query = @"
-                SELECT f.id AS Id, 
+                SELECT 
+                    f.id AS Id, 
                     f.name AS Name, 
-                    COUNT(fe.Id) AS ResponseCount,
+                    COUNT(fe.id) AS ResponseCount,
+                    (select count(*) from feedbacks fe where fe.is_new = true and fe.client_id = f.client_id and fe.form_id = f.id ) AS NewFeedbackCount,
                     f.updated_at AS LastUpdated,
                     f.created_at AS CreatedAt
                 FROM forms f
-                LEFT JOIN feedbacks fe ON fe.form_id = f.Id
+                LEFT JOIN feedbacks fe ON fe.form_id = f.id
                 WHERE f.client_id = @ClientId AND f.is_active = TRUE
-                GROUP BY f.Id, f.name, f.updated_at
-                ORDER BY F.created_at DESC;";
+                GROUP BY f.id, f.name, f.updated_at, f.created_at
+                ORDER BY f.created_at DESC;";
 
 
                 using (var connection = new NpgsqlConnection(_connectionString))
@@ -51,6 +53,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     Id = reader.GetInt32(reader.GetOrdinal("Id")),
                                     Name = reader["Name"].ToString(),
                                     ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
+                                    NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
                                     LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
                                     CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
                                 });
