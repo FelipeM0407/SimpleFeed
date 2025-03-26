@@ -22,7 +22,7 @@ namespace SimpleFeed.Application.Services
             var feedbacks = await _feedbackRepository.GetFeedbacksByFormAsync(formId);
 
             // Marcar os feedbacks como "não novos"
-            await _feedbackRepository.MarkFeedbacksAsReadAsync(formId);
+            // await _feedbackRepository.MarkFeedbacksAsReadAsync(formId);
 
             return feedbacks;
         }
@@ -32,6 +32,10 @@ namespace SimpleFeed.Application.Services
         {
             // Buscar os feedbacks
             var feedbacks = await _feedbackRepository.FilterFeedbacksAsync(formId, submitted_Start, submitted_End);
+
+            // Marcar os feedbacks como "não novos"
+            await _feedbackRepository.MarkFeedbacksAsReadAsync(feedbacks.Select(f => f.Id).ToArray());
+
 
             return feedbacks;
         }
