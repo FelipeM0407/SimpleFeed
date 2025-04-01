@@ -344,7 +344,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var fields = new List<FormFieldDto>();
 
                 var query = @"
-                SELECT ff.id, ff.name, ff.label, ff.type, ff.required, ff.ordenation, ff.options, fr.client_id
+                SELECT fr.name as form_name, ff.id, ff.name, ff.label, ff.type, ff.required, ff.ordenation, ff.options, fr.client_id
                 FROM form_fields ff
                 INNER JOIN forms fr ON fr.id = ff.form_id
                 WHERE form_id = @Form_Id";
@@ -369,7 +369,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     Required = reader.GetBoolean(reader.GetOrdinal("required")),
                                     Options = reader["options"]?.ToString(),
                                     Ordenation = reader.GetInt32(reader.GetOrdinal("ordenation")),
-                                    Client_Id = reader.GetInt32(reader.GetOrdinal("client_id"))
+                                    Client_Id = reader.GetInt32(reader.GetOrdinal("client_id")),
+                                    FormName = reader.GetString(reader.GetOrdinal("form_name"))
                                 });
                             }
                         }
