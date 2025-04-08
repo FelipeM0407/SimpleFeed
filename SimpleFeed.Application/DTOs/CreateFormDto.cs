@@ -27,6 +27,6 @@ namespace SimpleFeed.Application.DTOs
         public int Field_Type_Id { get; set; }
         public bool IsNew { get; set; }
         public int Client_Id { get; set; }
-        public string FormName { get; set; }
+        public string? FormName { get; set; }
     }
 }
