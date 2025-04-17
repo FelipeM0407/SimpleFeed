@@ -82,6 +82,7 @@ namespace SimpleFeed.Web.Controllers
             return Ok(new { Success = result });
         }
 
+        [AllowAnonymous]
         [HttpGet("{formId}/logo")]
         public async Task<IActionResult> GetLogoBase64ByFormId(int formId)
         {
