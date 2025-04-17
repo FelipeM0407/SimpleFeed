@@ -57,5 +57,9 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.SaveFormEditsAsync(editFormDto);
         }
 
+        public async Task<string> GetLogoBase64ByFormIdAsync(int formId)
+        {
+            return await _formRepository.GetLogoBase64ByFormIdAsync(formId);
+        }
     }
 }

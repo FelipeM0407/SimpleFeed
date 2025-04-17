@@ -546,6 +546,23 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 }
                             }
 
+                            // Insere ou atualiza o logo na tabela form_logo
+                            var upsertLogoQuery = @"
+                                INSERT INTO form_logo (form_id, logo_base64, created_at, updated_at)
+                                VALUES (@FormId, @LogoBase64, NOW(), NOW())
+                                ON CONFLICT (form_id)
+                                DO UPDATE SET
+                                    logo_base64 = EXCLUDED.logo_base64,
+                                    updated_at = NOW();";
+
+                            using (var upsertLogoCommand = new NpgsqlCommand(upsertLogoQuery, connection, transaction))
+                            {
+                                upsertLogoCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                                upsertLogoCommand.Parameters.AddWithValue("@LogoBase64", formDto.LogoBase64 ?? string.Empty);
+                                await upsertLogoCommand.ExecuteNonQueryAsync();
+                            }
+
+
                             // Confirma a transação
                             await transaction.CommitAsync();
                             return true;
@@ -564,6 +581,32 @@ namespace SimpleFeed.Infrastructure.Repositories
             {
                 // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao salvar as edições do formulário.", ex);
+            }
+        }
+
+        public async Task<string> GetLogoBase64ByFormIdAsync(int formId)
+        {
+            try
+            {
+                var query = @"
+            SELECT logo_base64
+            FROM form_logo
+            WHERE form_id = @FormId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", formId);
+                        var result = await command.ExecuteScalarAsync();
+                        return result?.ToString() ?? string.Empty;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ocorreu um erro ao recuperar o logo pelo ID do formulário.", ex);
             }
         }
     }
