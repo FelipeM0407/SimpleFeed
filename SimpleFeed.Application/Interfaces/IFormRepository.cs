@@ -17,6 +17,6 @@ namespace SimpleFeed.Application.Interfaces
         Task<List<FormFieldDto>> GetFormStructureAsync(int formId);
         Task<bool> ValidateExistenceFeedbacks(int formId);
         Task<bool> SaveFormEditsAsync(EditFormDto editFormDto);
-
+        Task<string> GetLogoBase64ByFormIdAsync(int formId);
     }
 }

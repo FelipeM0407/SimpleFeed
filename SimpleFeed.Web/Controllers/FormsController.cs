@@ -56,7 +56,7 @@ namespace SimpleFeed.Web.Controllers
             var formId = await _formService.CreateFormAsync(formDto);
             return CreatedAtAction(nameof(CreateForm), new { id = formId }, new { FormId = formId });
         }
-        
+
         [AllowAnonymous]
         [HttpGet("{formId}/structure")]
         public async Task<IActionResult> GetFormStructure(int formId)
@@ -80,6 +80,13 @@ namespace SimpleFeed.Web.Controllers
         {
             var result = await _formService.SaveFormEditsAsync(editFormDto);
             return Ok(new { Success = result });
+        }
+
+        [HttpGet("{formId}/logo")]
+        public async Task<IActionResult> GetLogoBase64ByFormId(int formId)
+        {
+            var logoBase64 = await _formService.GetLogoBase64ByFormIdAsync(formId);
+            return Ok(new { logoBase64 });
         }
 
     }

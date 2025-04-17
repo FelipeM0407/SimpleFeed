@@ -11,5 +11,6 @@ namespace SimpleFeed.Application.DTOs
         public List<FormFieldDto> Fields { get; set; }
         public List<int> FieldsDeletedsWithFeedbacks { get; set; }
         public List<int> FieldsDeleteds { get; set; }
+        public string LogoBase64 { get; set; }
     }
 }
