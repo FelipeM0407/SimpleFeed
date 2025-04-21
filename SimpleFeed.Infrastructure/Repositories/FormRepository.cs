@@ -416,171 +416,191 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
-                var formQuery = @"
-                        UPDATE forms
-                        SET updated_at = NOW()
-                        WHERE id = @FormId";
+            var formQuery = @"
+                UPDATE forms
+                SET updated_at = NOW()
+                WHERE id = @FormId";
 
-                using (var connection = new NpgsqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var transaction = await connection.BeginTransactionAsync())
                 {
-                    await connection.OpenAsync();
-                    using (var transaction = await connection.BeginTransactionAsync())
+                try
+                {
+                    // Atualiza o formulário
+                    using (var formCommand = new NpgsqlCommand(formQuery, connection, transaction))
                     {
-                        try
+                    formCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+
+                    await formCommand.ExecuteNonQueryAsync();
+                    }
+
+                    // Exclui campos com base na lista FieldsDeletedsWithFeedbacks
+                    if (formDto.FieldsDeletedsWithFeedbacks.Any())
+                    {
+                    var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
+                    using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
+                    {
+                        deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
+                        await deleteFieldsCommand.ExecuteNonQueryAsync();
+                    }
+
+                    // Remove objetos correspondentes dos feedbacks, apenas se houver FieldsDeletedsWithFeedbacks
+                    var updateFeedbacksQuery = @"
+                        WITH updated_answers AS (
+                            SELECT id, jsonb_agg(answer) AS new_answers
+                            FROM (
+                            SELECT id, jsonb_array_elements(answers) AS answer
+                            FROM feedbacks
+                            WHERE form_id = @FormId
+                            ) sub
+                            WHERE NOT (answer->>'id_form_field')::int = ANY(@FieldIds)
+                            GROUP BY id
+                        )
+                        UPDATE feedbacks
+                        SET answers = updated_answers.new_answers
+                        FROM updated_answers
+                        WHERE feedbacks.id = updated_answers.id;";
+
+                    using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
+                    {
+                        updateFeedbacksCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                        updateFeedbacksCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
+                        await updateFeedbacksCommand.ExecuteNonQueryAsync();
+                    }
+                    }
+                    else
+                    {
+                    // Remove apenas os campos da tabela form_fields
+                    var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
+                    using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
+                    {
+                        deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeleteds);
+                        await deleteFieldsCommand.ExecuteNonQueryAsync();
+                    }
+                    }
+
+                    // Insere novos campos em form_fields, apenas se IsNew for verdadeiro
+                    if (formDto.Fields.Any(f => f.IsNew))
+                    {
+                    var insertFieldsQuery = @"
+                INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
+                VALUES (@FormId, @Name, @Label, @Type, @Required, @Ordenation, @Options, @Field_Type_Id)
+                RETURNING id;";
+
+                    foreach (var field in formDto.Fields.Where(f => f.IsNew))
+                    {
+                        using (var fieldCommand = new NpgsqlCommand(insertFieldsQuery, connection, transaction))
                         {
-                            // Atualiza o formulário
-                            using (var formCommand = new NpgsqlCommand(formQuery, connection, transaction))
-                            {
-                                formCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                        fieldCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                        fieldCommand.Parameters.AddWithValue("@Name", field.Name);
+                        fieldCommand.Parameters.AddWithValue("@Label", field.Label);
+                        fieldCommand.Parameters.AddWithValue("@Type", field.Type);
+                        fieldCommand.Parameters.AddWithValue("@Required", field.Required);
+                        fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
+                        fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
+                        fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
 
-                                await formCommand.ExecuteNonQueryAsync();
-                            }
+                        var newFieldId = (int)await fieldCommand.ExecuteScalarAsync();
 
-                            // Exclui campos com base na lista FieldsDeletedsWithFeedbacks
-                            if (formDto.FieldsDeletedsWithFeedbacks.Any())
-                            {
-                                var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
-                                using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
-                                {
-                                    deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
-                                    await deleteFieldsCommand.ExecuteNonQueryAsync();
-                                }
+                        // Adiciona objetos vazios na tabela feedbacks
+                        var updateFeedbacksQuery = @"
+                    UPDATE feedbacks
+                    SET answers = answers || jsonb_build_object('id_form_field', @FieldId, 'value', '')
+                    WHERE form_id = @FormId;";
 
-                                // Remove objetos correspondentes dos feedbacks, apenas se houver FieldsDeletedsWithFeedbacks
-                                var updateFeedbacksQuery = @"
-                                        WITH updated_answers AS (
-                                            SELECT id, jsonb_agg(answer) AS new_answers
-                                            FROM (
-                                                SELECT id, jsonb_array_elements(answers) AS answer
-                                                FROM feedbacks
-                                                WHERE form_id = @FormId
-                                            ) sub
-                                            WHERE NOT (answer->>'id_form_field')::int = ANY(@FieldIds)
-                                            GROUP BY id
-                                        )
-                                        UPDATE feedbacks
-                                        SET answers = updated_answers.new_answers
-                                        FROM updated_answers
-                                        WHERE feedbacks.id = updated_answers.id;";
-
-                                using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
-                                {
-                                    updateFeedbacksCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
-                                    updateFeedbacksCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeletedsWithFeedbacks);
-                                    await updateFeedbacksCommand.ExecuteNonQueryAsync();
-                                }
-                            }
-                            else
-                            {
-                                // Remove apenas os campos da tabela form_fields
-                                var deleteFieldsQuery = "DELETE FROM form_fields WHERE id = ANY(@FieldIds)";
-                                using (var deleteFieldsCommand = new NpgsqlCommand(deleteFieldsQuery, connection, transaction))
-                                {
-                                    deleteFieldsCommand.Parameters.AddWithValue("@FieldIds", formDto.FieldsDeleteds);
-                                    await deleteFieldsCommand.ExecuteNonQueryAsync();
-                                }
-                            }
-
-                            // Insere novos campos em form_fields, apenas se IsNew for verdadeiro
-                            if (formDto.Fields.Any(f => f.IsNew))
-                            {
-                                var insertFieldsQuery = @"
-                        INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
-                        VALUES (@FormId, @Name, @Label, @Type, @Required, @Ordenation, @Options, @Field_Type_Id)
-                        RETURNING id;";
-
-                                foreach (var field in formDto.Fields.Where(f => f.IsNew))
-                                {
-                                    using (var fieldCommand = new NpgsqlCommand(insertFieldsQuery, connection, transaction))
-                                    {
-                                        fieldCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
-                                        fieldCommand.Parameters.AddWithValue("@Name", field.Name);
-                                        fieldCommand.Parameters.AddWithValue("@Label", field.Label);
-                                        fieldCommand.Parameters.AddWithValue("@Type", field.Type);
-                                        fieldCommand.Parameters.AddWithValue("@Required", field.Required);
-                                        fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
-                                        fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
-                                        fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
-
-                                        var newFieldId = (int)await fieldCommand.ExecuteScalarAsync();
-
-                                        // Adiciona objetos vazios na tabela feedbacks
-                                        var updateFeedbacksQuery = @"
-                                UPDATE feedbacks
-                                SET answers = answers || jsonb_build_object('id_form_field', @FieldId, 'value', '')
-                                WHERE form_id = @FormId;";
-
-                                        using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
-                                        {
-                                            updateFeedbacksCommand.Parameters.AddWithValue("@FieldId", newFieldId);
-                                            updateFeedbacksCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
-                                            await updateFeedbacksCommand.ExecuteNonQueryAsync();
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Atualiza todos os campos antigos
-                            foreach (var field in formDto.Fields.Where(f => !f.IsNew))
-                            {
-                                var updateFieldQuery = @"
-                                UPDATE form_fields
-                                SET name = @Name,
-                                    label = @Label,
-                                    type = @Type,
-                                    required = @Required,
-                                    ordenation = @Ordenation,
-                                    options = @Options
-                                WHERE id = @FieldId";
-
-                                using (var updateFieldCommand = new NpgsqlCommand(updateFieldQuery, connection, transaction))
-                                {
-                                    updateFieldCommand.Parameters.AddWithValue("@Name", field.Name);
-                                    updateFieldCommand.Parameters.AddWithValue("@Label", field.Label);
-                                    updateFieldCommand.Parameters.AddWithValue("@Type", field.Type);
-                                    updateFieldCommand.Parameters.AddWithValue("@Required", field.Required);
-                                    updateFieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
-                                    updateFieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
-                                    updateFieldCommand.Parameters.AddWithValue("@FieldId", field.Id);
-                                    await updateFieldCommand.ExecuteNonQueryAsync();
-                                }
-                            }
-
-                            // Insere ou atualiza o logo na tabela form_logo
-                            var upsertLogoQuery = @"
-                                INSERT INTO form_logo (form_id, logo_base64, created_at, updated_at)
-                                VALUES (@FormId, @LogoBase64, NOW(), NOW())
-                                ON CONFLICT (form_id)
-                                DO UPDATE SET
-                                    logo_base64 = EXCLUDED.logo_base64,
-                                    updated_at = NOW();";
-
-                            using (var upsertLogoCommand = new NpgsqlCommand(upsertLogoQuery, connection, transaction))
-                            {
-                                upsertLogoCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
-                                upsertLogoCommand.Parameters.AddWithValue("@LogoBase64", formDto.LogoBase64 ?? string.Empty);
-                                await upsertLogoCommand.ExecuteNonQueryAsync();
-                            }
-
-
-                            // Confirma a transação
-                            await transaction.CommitAsync();
-                            return true;
+                        using (var updateFeedbacksCommand = new NpgsqlCommand(updateFeedbacksQuery, connection, transaction))
+                        {
+                            updateFeedbacksCommand.Parameters.AddWithValue("@FieldId", newFieldId);
+                            updateFeedbacksCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                            await updateFeedbacksCommand.ExecuteNonQueryAsync();
                         }
-                        catch (Exception e)
-                        {
-                            // Reverte a transação em caso de erro
-                            Console.WriteLine(e.Message);
-                            await transaction.RollbackAsync();
-                            return false;
                         }
                     }
+                    }
+
+                    // Atualiza todos os campos antigos
+                    foreach (var field in formDto.Fields.Where(f => !f.IsNew))
+                    {
+                    var updateFieldQuery = @"
+                    UPDATE form_fields
+                    SET name = @Name,
+                        label = @Label,
+                        type = @Type,
+                        required = @Required,
+                        ordenation = @Ordenation,
+                        options = @Options
+                    WHERE id = @FieldId";
+
+                    using (var updateFieldCommand = new NpgsqlCommand(updateFieldQuery, connection, transaction))
+                    {
+                        updateFieldCommand.Parameters.AddWithValue("@Name", field.Name);
+                        updateFieldCommand.Parameters.AddWithValue("@Label", field.Label);
+                        updateFieldCommand.Parameters.AddWithValue("@Type", field.Type);
+                        updateFieldCommand.Parameters.AddWithValue("@Required", field.Required);
+                        updateFieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
+                        updateFieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ? DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
+                        updateFieldCommand.Parameters.AddWithValue("@FieldId", field.Id);
+                        await updateFieldCommand.ExecuteNonQueryAsync();
+                    }
+                    }
+
+                    // Insere ou atualiza o logo na tabela form_logo
+                    var upsertLogoQuery = @"
+                    INSERT INTO form_logo (form_id, logo_base64, created_at, updated_at)
+                    VALUES (@FormId, @LogoBase64, NOW(), NOW())
+                    ON CONFLICT (form_id)
+                    DO UPDATE SET
+                        logo_base64 = EXCLUDED.logo_base64,
+                        updated_at = NOW();";
+
+                    using (var upsertLogoCommand = new NpgsqlCommand(upsertLogoQuery, connection, transaction))
+                    {
+                    upsertLogoCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+                    upsertLogoCommand.Parameters.AddWithValue("@LogoBase64", formDto.LogoBase64 ?? string.Empty);
+                    await upsertLogoCommand.ExecuteNonQueryAsync();
+                    }
+
+                    // Insere ou atualiza a data de expiração na tabela form_settings
+                    var upsertSettingsQuery = @"
+                    INSERT INTO form_settings (form_id, expiration_date, created_at, updated_at)
+                    VALUES (@FormId, @ExpirationDate, NOW(), NOW())
+                    ON CONFLICT (form_id)
+                    DO UPDATE SET
+                        expiration_date = EXCLUDED.expiration_date,
+                        updated_at = NOW();";
+
+                    using (var upsertSettingsCommand = new NpgsqlCommand(upsertSettingsQuery, connection, transaction))
+                    {
+                    upsertSettingsCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
+
+                    if (formDto.ExpirationDate == null)
+                        upsertSettingsCommand.Parameters.AddWithValue("@ExpirationDate", DBNull.Value);
+                    else
+                        upsertSettingsCommand.Parameters.AddWithValue("@ExpirationDate", formDto.ExpirationDate);
+
+                    await upsertSettingsCommand.ExecuteNonQueryAsync();
+                    }
+
+                    // Confirma a transação
+                    await transaction.CommitAsync();
+                    return true;
                 }
+                catch (Exception e)
+                {
+                    // Reverte a transação em caso de erro
+                    Console.WriteLine(e.Message);
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+                }
+            }
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
-                throw new Exception("Ocorreu um erro ao salvar as edições do formulário.", ex);
+            // Log the exception or handle it as needed
+            throw new Exception("Ocorreu um erro ao salvar as edições do formulário.", ex);
             }
         }
 
@@ -607,6 +627,45 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 throw new Exception("Ocorreu um erro ao recuperar o logo pelo ID do formulário.", ex);
+            }
+        }
+
+        public async Task<FormSettingsDto> GetSettingsByFormIdAsync(int formId)
+        {
+            try
+            {
+            var query = @"
+            SELECT expiration_date
+            FROM form_settings
+            WHERE form_id = @FormId";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                command.Parameters.AddWithValue("@FormId", formId);
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                    return new FormSettingsDto
+                    {
+                        ExpirationDate = reader.IsDBNull(reader.GetOrdinal("expiration_date"))
+                        ? (DateTime?)null
+                        : reader.GetDateTime(reader.GetOrdinal("expiration_date"))
+                    };
+                    }
+                }
+                }
+            }
+
+            return null;
+            }
+            catch (Exception ex)
+            {
+            throw new Exception("Ocorreu um erro ao recuperar as configurações do formulário.", ex);
             }
         }
     }

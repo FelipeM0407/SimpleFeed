@@ -12,5 +12,6 @@ namespace SimpleFeed.Application.DTOs
         public List<int> FieldsDeletedsWithFeedbacks { get; set; }
         public List<int> FieldsDeleteds { get; set; }
         public string LogoBase64 { get; set; }
+        public DateTime? ExpirationDate { get; set; }
     }
 }
