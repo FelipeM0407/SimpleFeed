@@ -90,5 +90,13 @@ namespace SimpleFeed.Web.Controllers
             return Ok(new { logoBase64 });
         }
 
+        [AllowAnonymous]
+        [HttpGet("{formId}/settings")]
+        public async Task<IActionResult> GetSettingsByFormIdAsync(int formId)
+        {
+            var settings = await _formService.GetSettingsByFormIdAsync(formId);
+            return Ok(settings);
+        }
+
     }
 }

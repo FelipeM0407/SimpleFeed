@@ -61,5 +61,10 @@ namespace SimpleFeed.Application.Services
         {
             return await _formRepository.GetLogoBase64ByFormIdAsync(formId);
         }
+
+        public async Task<FormSettingsDto> GetSettingsByFormIdAsync(int formId)
+        {
+            return await _formRepository.GetSettingsByFormIdAsync(formId);
+        }
     }
 }
