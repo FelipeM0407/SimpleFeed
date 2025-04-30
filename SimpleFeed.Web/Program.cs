@@ -77,11 +77,14 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddPolicy("AllowFrontend", builder =>
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        builder.WithOrigins(
+          "https://www.simplefeed.com.br",
+          "http://localhost:4200"
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader();
     });
 });
 
@@ -171,7 +174,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseRouting();
 app.UseCookiePolicy(); // Aplica a política de cookies
 
