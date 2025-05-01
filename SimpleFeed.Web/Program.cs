@@ -81,7 +81,8 @@ builder.Services.AddCors(options =>
     {
         builder.WithOrigins(
           "https://www.simplefeed.com.br",
-          "http://localhost:4200"
+          "http://localhost:4200",
+          "https://simple-feed-front-git-develop-felipes-projects-b3f64dcf.vercel.app"
         )
         .AllowAnyMethod()
         .AllowAnyHeader();
