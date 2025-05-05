@@ -98,6 +98,7 @@ namespace SimpleFeed.Web.Controllers
             return Ok(settings);
         }
 
+        [AllowAnonymous]
         [HttpGet("{id}/style")]
         public async Task<IActionResult> GetFormStyle(int id)
         {
