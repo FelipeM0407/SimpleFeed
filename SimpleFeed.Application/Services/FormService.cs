@@ -11,10 +11,13 @@ namespace SimpleFeed.Application.Services
     public class FormService
     {
         private readonly IFormRepository _formRepository;
+        private readonly IFormStyleRepository _formStyleRepo;
 
-        public FormService(IFormRepository formRepository)
+
+        public FormService(IFormRepository formRepository, IFormStyleRepository formStyleRepo)
         {
             _formRepository = formRepository;
+            _formStyleRepo = formStyleRepo;
         }
 
         public async Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId)
@@ -66,5 +69,17 @@ namespace SimpleFeed.Application.Services
         {
             return await _formRepository.GetSettingsByFormIdAsync(formId);
         }
+
+        public async Task<FormStyleDto?> GetFormStyleAsync(int formId)
+        {
+            return await _formStyleRepo.GetByFormIdAsync(formId);
+        }
+
+        public async Task SaveFormStyleAsync(FormStyleDto dto)
+        {
+            await _formStyleRepo.SaveAsync(dto);
+        }
+
+
     }
 }

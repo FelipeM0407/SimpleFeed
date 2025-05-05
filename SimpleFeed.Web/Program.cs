@@ -116,6 +116,8 @@ builder.Services.AddScoped<ITemplateRepository, TemplateRepository>();
 builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IFeedbackFormRepository, FeedbackFormRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IFormStyleRepository, FormStyleRepository>();
+
 
 
 // Registrar serviços
