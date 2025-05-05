@@ -17,40 +17,40 @@ public class FormStyleRepository : IFormStyleRepository
     public async Task<FormStyleDto?> GetByFormIdAsync(int formId)
     {
         var query = @"SELECT id, form_id, color, color_button, background_color, font_color, font_family, font_size
-                      FROM form_style
-                      WHERE form_id = @FormId
-                      LIMIT 1";
+                  FROM form_style
+                  WHERE form_id = @FormId
+                  LIMIT 1";
 
-        using (var connection = new NpgsqlConnection(_connectionString))
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@FormId", formId);
+
+        using var reader = await command.ExecuteReaderAsync();
+
+        FormStyleDto? dto = null;
+
+        if (await reader.ReadAsync())
         {
-            await connection.OpenAsync();
-
-            using (var command = new NpgsqlCommand(query, connection))
+            dto = new FormStyleDto
             {
-                command.Parameters.AddWithValue("@FormId", formId);
-
-                using (var reader = await command.ExecuteReaderAsync())
-                {
-                    if (await reader.ReadAsync())
-                    {
-                        return new FormStyleDto
-                        {
-                            Id = reader.GetInt32(reader.GetOrdinal("id")),
-                            FormId = reader.GetInt32(reader.GetOrdinal("form_id")),
-                            Color = reader["color"] as string,
-                            ColorButton = reader["color_button"] as string,
-                            BackgroundColor = reader["background_color"] as string,
-                            FontColor = reader["font_color"] as string,
-                            FontFamily = reader["font_family"] as string,
-                            FontSize = reader.GetInt32(reader.GetOrdinal("font_size"))
-                        };
-                    }
-                }
-            }
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                FormId = reader.GetInt32(reader.GetOrdinal("form_id")),
+                Color = reader["color"] as string,
+                ColorButton = reader["color_button"] as string,
+                BackgroundColor = reader["background_color"] as string,
+                FontColor = reader["font_color"] as string,
+                FontFamily = reader["font_family"] as string,
+                FontSize = reader.GetInt32(reader.GetOrdinal("font_size"))
+            };
         }
 
-        return null;
+        await reader.CloseAsync(); // fechamento explícito
+
+        return dto;
     }
+
 
     public async Task SaveAsync(FormStyleDto dto)
     {
