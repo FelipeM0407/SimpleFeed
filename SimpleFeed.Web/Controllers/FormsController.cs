@@ -98,5 +98,21 @@ namespace SimpleFeed.Web.Controllers
             return Ok(settings);
         }
 
+        [HttpGet("{id}/style")]
+        public async Task<IActionResult> GetFormStyle(int id)
+        {
+            var style = await _formService.GetFormStyleAsync(id);
+            return Ok(style);
+        }
+
+        [HttpPost("{id}/style")]
+        public async Task<IActionResult> SaveFormStyle(int id, [FromBody] FormStyleDto dto)
+        {
+            dto.FormId = id;
+            await _formService.SaveFormStyleAsync(dto);
+            return NoContent();
+        }
+
+
     }
 }

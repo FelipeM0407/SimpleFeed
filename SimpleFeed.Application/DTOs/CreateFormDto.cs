@@ -13,6 +13,7 @@ namespace SimpleFeed.Application.DTOs
         public bool Is_Active { get; set; }
         public int Template_Id { get; set; }
         public List<FormFieldDto> Fields { get; set; }
+        public FormStyleDto FormStyle { get; set; }
     }
 
     public class FormFieldDto
