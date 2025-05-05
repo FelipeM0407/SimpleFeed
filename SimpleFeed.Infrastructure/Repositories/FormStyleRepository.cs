@@ -57,30 +57,36 @@ public class FormStyleRepository : IFormStyleRepository
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
+
+            // Usamos uma transação para garantir atomicidade
             using (var transaction = await connection.BeginTransactionAsync())
             {
                 try
                 {
                     var existsQuery = @"SELECT COUNT(1) FROM form_style WHERE form_id = @FormId";
-                    bool exists = false;
+                    bool exists;
 
+                    // Usar uma conexão separada ou garantir que o comando execute totalmente antes de outro
                     using (var existsCommand = new NpgsqlCommand(existsQuery, connection, transaction))
                     {
                         existsCommand.Parameters.AddWithValue("@FormId", dto.FormId);
-                        exists = (long)await existsCommand.ExecuteScalarAsync() > 0;
+
+                        // Executa e aguarda completamente ANTES de prosseguir
+                        var result = await existsCommand.ExecuteScalarAsync();
+                        exists = (result != null && Convert.ToInt64(result) > 0);
                     }
 
                     if (exists)
                     {
                         var updateSql = @"UPDATE form_style SET
-                                            color = @Color,
-                                            color_button = @ColorButton,
-                                            background_color = @BackgroundColor,
-                                            font_color = @FontColor,
-                                            font_family = @FontFamily,
-                                            font_size = @FontSize,
-                                            updated_at = CURRENT_TIMESTAMP
-                                          WHERE form_id = @FormId";
+                                        color = @Color,
+                                        color_button = @ColorButton,
+                                        background_color = @BackgroundColor,
+                                        font_color = @FontColor,
+                                        font_family = @FontFamily,
+                                        font_size = @FontSize,
+                                        updated_at = CURRENT_TIMESTAMP
+                                      WHERE form_id = @FormId";
 
                         using (var command = new NpgsqlCommand(updateSql, connection, transaction))
                         {
@@ -97,8 +103,10 @@ public class FormStyleRepository : IFormStyleRepository
                     }
                     else
                     {
-                        var insertSql = @"INSERT INTO form_style (form_id, color, background_color, font_color, font_family, font_size)
-                                          VALUES (@FormId, @Color, @BackgroundColor, @FontColor, @FontFamily, @FontSize)";
+                        var insertSql = @"INSERT INTO form_style 
+                                        (form_id, color, color_button, background_color, font_color, font_family, font_size)
+                                      VALUES 
+                                        (@FormId, @Color, @ColorButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize)";
 
                         using (var command = new NpgsqlCommand(insertSql, connection, transaction))
                         {
@@ -124,4 +132,5 @@ public class FormStyleRepository : IFormStyleRepository
             }
         }
     }
+
 }
