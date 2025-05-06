@@ -11,6 +11,7 @@ namespace SimpleFeed.Application.DTOs
         public int FormId { get; set; }
         public string? Color { get; set; }
         public string? ColorButton { get; set; }
+        public string? ColorTextButton { get; set; }
         public string? BackgroundColor { get; set; }
         public string? FontColor { get; set; }
         public string? FontFamily { get; set; }
