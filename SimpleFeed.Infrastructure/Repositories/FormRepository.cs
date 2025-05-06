@@ -86,11 +86,11 @@ namespace SimpleFeed.Infrastructure.Repositories
         FROM form_fields
         WHERE form_id = @OriginalFormId;";
                 var getStyleQuery = @"
-        SELECT color, color_button, background_color, font_color, font_family, font_size
+        SELECT color, color_button, color_text_button, background_color, font_color, font_family, font_size
         FROM form_style
         WHERE form_id = @FormId;";
                 var insertStyleQuery = @"
-        INSERT INTO form_style (form_id, color, color_button, background_color, font_color, font_family, font_size, created_at, updated_at)
+        INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
         VALUES (@NewFormId, @Color, @ColorButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
@@ -104,7 +104,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             using var getFormCommand = new NpgsqlCommand(getFormQuery, connection, transaction);
                             getFormCommand.Parameters.AddWithValue("@FormId", formId);
 
-                            string? color = null, colorButton = null, backgroundColor = null, fontColor = null, fontFamily = null;
+                            string? color = null, colorButton = null, colorTextButton = null, backgroundColor = null, fontColor = null, fontFamily = null;
                             int? fontSize = null;
 
                             using (var reader = await getFormCommand.ExecuteReaderAsync())
@@ -150,6 +150,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                         {
                                             color = styleReader["color"]?.ToString();
                                             colorButton = styleReader["color_button"]?.ToString();
+                                            colorTextButton = styleReader["color_text_button"]?.ToString();
                                             backgroundColor = styleReader["background_color"]?.ToString();
                                             fontColor = styleReader["font_color"]?.ToString();
                                             fontFamily = styleReader["font_family"]?.ToString();
@@ -299,7 +300,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             if (formDto.FormStyle != null)
                             {
                                 var styleQuery = @"
-                    INSERT INTO form_style (form_id, color, color_button, background_color, font_color, font_family, font_size, created_at, updated_at)
+                    INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
                     VALUES (@FormId, @Color, @ColorButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
 
                                 using (var styleCommand = new NpgsqlCommand(styleQuery, connection, transaction))
@@ -307,6 +308,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     styleCommand.Parameters.AddWithValue("@FormId", formId);
                                     styleCommand.Parameters.AddWithValue("@Color", formDto.FormStyle.Color ?? (object)DBNull.Value);
                                     styleCommand.Parameters.AddWithValue("@ColorButton", formDto.FormStyle.ColorButton ?? (object)DBNull.Value);
+                                    styleCommand.Parameters.AddWithValue("@ColorTextButton", formDto.FormStyle.ColorTextButton ?? (object)DBNull.Value);
                                     styleCommand.Parameters.AddWithValue("@BackgroundColor", formDto.FormStyle.BackgroundColor ?? (object)DBNull.Value);
                                     styleCommand.Parameters.AddWithValue("@FontColor", formDto.FormStyle.FontColor ?? (object)DBNull.Value);
                                     styleCommand.Parameters.AddWithValue("@FontFamily", formDto.FormStyle.FontFamily ?? (object)DBNull.Value);

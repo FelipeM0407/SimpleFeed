@@ -16,7 +16,7 @@ public class FormStyleRepository : IFormStyleRepository
 
     public async Task<FormStyleDto?> GetByFormIdAsync(int formId)
     {
-        var query = @"SELECT id, form_id, color, color_button, background_color, font_color, font_family, font_size
+        var query = @"SELECT id, form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size
                   FROM form_style
                   WHERE form_id = @FormId
                   LIMIT 1";
@@ -39,6 +39,7 @@ public class FormStyleRepository : IFormStyleRepository
                 FormId = reader.GetInt32(reader.GetOrdinal("form_id")),
                 Color = reader["color"] as string,
                 ColorButton = reader["color_button"] as string,
+                ColorTextButton = reader["color_text_button"] as string,
                 BackgroundColor = reader["background_color"] as string,
                 FontColor = reader["font_color"] as string,
                 FontFamily = reader["font_family"] as string,
@@ -81,6 +82,7 @@ public class FormStyleRepository : IFormStyleRepository
                         var updateSql = @"UPDATE form_style SET
                                         color = @Color,
                                         color_button = @ColorButton,
+                                        color_text_button = @ColorTextButton,
                                         background_color = @BackgroundColor,
                                         font_color = @FontColor,
                                         font_family = @FontFamily,
@@ -93,6 +95,7 @@ public class FormStyleRepository : IFormStyleRepository
                             command.Parameters.AddWithValue("@Color", (object?)dto.Color ?? DBNull.Value);
                             command.Parameters.AddWithValue("@ColorButton", (object?)dto.ColorButton ?? DBNull.Value);
                             command.Parameters.AddWithValue("@BackgroundColor", (object?)dto.BackgroundColor ?? DBNull.Value);
+                            command.Parameters.AddWithValue("@ColorTextButton", (object?)dto.ColorTextButton ?? DBNull.Value);
                             command.Parameters.AddWithValue("@FontColor", (object?)dto.FontColor ?? DBNull.Value);
                             command.Parameters.AddWithValue("@FontFamily", (object?)dto.FontFamily ?? DBNull.Value);
                             command.Parameters.AddWithValue("@FontSize", (object?)dto.FontSize ?? DBNull.Value);
@@ -104,15 +107,16 @@ public class FormStyleRepository : IFormStyleRepository
                     else
                     {
                         var insertSql = @"INSERT INTO form_style 
-                                        (form_id, color, color_button, background_color, font_color, font_family, font_size)
+                                        (form_id, color, color_button, color_text_button,  background_color, font_color, font_family, font_size)
                                       VALUES 
-                                        (@FormId, @Color, @ColorButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize)";
+                                        (@FormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize)";
 
                         using (var command = new NpgsqlCommand(insertSql, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@FormId", dto.FormId);
                             command.Parameters.AddWithValue("@Color", (object?)dto.Color ?? DBNull.Value);
                             command.Parameters.AddWithValue("@ColorButton", (object?)dto.ColorButton ?? DBNull.Value);
+                            command.Parameters.AddWithValue("@ColorTextButton", (object?)dto.ColorTextButton ?? DBNull.Value);
                             command.Parameters.AddWithValue("@BackgroundColor", (object?)dto.BackgroundColor ?? DBNull.Value);
                             command.Parameters.AddWithValue("@FontColor", (object?)dto.FontColor ?? DBNull.Value);
                             command.Parameters.AddWithValue("@FontFamily", (object?)dto.FontFamily ?? DBNull.Value);
