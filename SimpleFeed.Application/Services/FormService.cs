@@ -80,6 +80,10 @@ namespace SimpleFeed.Application.Services
             await _formStyleRepo.SaveAsync(dto);
         }
 
+        public async Task<int> GetAllFormsCountAsync(int clientId)
+        {
+            return await _formRepository.GetAllFormsCountAsync(clientId);
+        }
 
     }
 }

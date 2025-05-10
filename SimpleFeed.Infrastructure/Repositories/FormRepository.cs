@@ -735,5 +735,32 @@ namespace SimpleFeed.Infrastructure.Repositories
                 throw new Exception("Ocorreu um erro ao recuperar as configurações do formulário.", ex);
             }
         }
+    
+        public async Task<int> GetAllFormsCountAsync(int clientId)
+        {
+            try
+            {
+                var query = @"
+                SELECT COUNT(*)
+                FROM forms
+                WHERE client_id = @ClientId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@ClientId", clientId);
+                        var count = (long)await command.ExecuteScalarAsync();
+                        return (int)count;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao contar os formulários.", ex);
+            }
+        }
     }
 }
