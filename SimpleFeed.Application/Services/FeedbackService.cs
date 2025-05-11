@@ -44,5 +44,25 @@ namespace SimpleFeed.Application.Services
         {
             await _feedbackRepository.DeleteFeedbacksAsync(feedbackIds);
         }
+
+        public async Task<int> GetNewFeedbacksCountAsync(int formId)
+        {
+            return await _feedbackRepository.GetNewFeedbacksCountAsync(formId);
+        }
+
+        public async Task<int> GetAllFeedbacksCountAsync(int formId)
+        {
+            return await _feedbackRepository.GetAllFeedbacksCountAsync(formId);
+        }
+
+        public async Task<int> GetTodayFeedbacksCountAsync(int formId)
+        {
+            return await _feedbackRepository.GetTodayFeedbacksCountAsync(formId);
+        }
+
+        public async Task<List<FeedbacksChartDto>> GetFeedbacksCountLast30DaysByClientAsync(int clientId)
+        {
+            return await _feedbackRepository.GetFeedbacksCountLast30DaysByClientAsync(clientId);
+        }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
@@ -164,5 +165,125 @@ namespace SimpleFeed.Infrastructure.Repositories
                 throw new Exception("Ocorreu um erro ao deletar os feedbacks.", ex);
             }
         }
+
+        public async Task<int> GetNewFeedbacksCountAsync(int clientId)
+        {
+            try
+            {
+                var query = "SELECT COUNT(*) FROM feedbacks WHERE client_id = @ClientId AND is_new = TRUE";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@ClientId", clientId);
+                        return Convert.ToInt32(await command.ExecuteScalarAsync());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao contar os feedbacks novos.", ex);
+            }
+        }
+
+        public async Task<int> GetAllFeedbacksCountAsync(int clientId)
+        {
+            try
+            {
+                var query = "SELECT COUNT(*) FROM feedbacks WHERE client_id = @ClientId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@ClientId", clientId);
+                        return Convert.ToInt32(await command.ExecuteScalarAsync());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao contar todos os feedbacks.", ex);
+            }
+        }
+
+        public async Task<int> GetTodayFeedbacksCountAsync(int clientId)
+        {
+            try
+            {
+                var query = "SELECT COUNT(*) FROM feedbacks WHERE client_id = @ClientId AND DATE(submitted_at) = CURRENT_DATE";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@ClientId", clientId);
+                        return Convert.ToInt32(await command.ExecuteScalarAsync());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao contar os feedbacks de hoje.", ex);
+            }
+        }
+
+        public async Task<List<FeedbacksChartDto>> GetFeedbacksCountLast30DaysByClientAsync(int clientId)
+        {
+            var feedbacksCount = new List<FeedbacksChartDto>();
+
+            var query = @"
+        WITH dates AS (
+            SELECT generate_series(
+            CURRENT_DATE - INTERVAL '29 days',
+            CURRENT_DATE,
+            INTERVAL '1 day'
+            )::DATE AS day
+        )
+        SELECT 
+            d.day,
+            COUNT(f.id) AS count
+        FROM dates d
+        LEFT JOIN feedbacks f ON DATE(f.submitted_at) = d.day AND f.client_id = @ClientId
+        GROUP BY d.day
+        ORDER BY d.day;
+        ";
+
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+            await connection.OpenAsync();
+            using (var command = new NpgsqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@ClientId", clientId);
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                while (await reader.ReadAsync())
+                {
+                    var date = reader.GetDateTime(reader.GetOrdinal("day"));
+                    var count = reader.GetInt32(reader.GetOrdinal("count"));
+
+                    feedbacksCount.Add(new FeedbacksChartDto
+                    {
+                    Label = date.ToString("dd/MMM", new CultureInfo("pt-BR")).Replace(date.ToString("MMM", new CultureInfo("pt-BR")), CultureInfo.CurrentCulture.TextInfo.ToTitleCase(date.ToString("MMM", new CultureInfo("pt-BR")))),
+                    Value = count
+                    });
+                }
+                }
+            }
+            }
+
+            return feedbacksCount;
+        }
+
+
+
     }
 }

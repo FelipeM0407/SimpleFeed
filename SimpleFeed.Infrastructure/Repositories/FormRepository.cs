@@ -301,7 +301,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                             {
                                 var styleQuery = @"
                     INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
-                    VALUES (@FormId, @Color, @ColorButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
+                    VALUES (@FormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
 
                                 using (var styleCommand = new NpgsqlCommand(styleQuery, connection, transaction))
                                 {
@@ -733,6 +733,33 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 throw new Exception("Ocorreu um erro ao recuperar as configurações do formulário.", ex);
+            }
+        }
+    
+        public async Task<int> GetAllFormsCountAsync(int clientId)
+        {
+            try
+            {
+                var query = @"
+                SELECT COUNT(*)
+                FROM forms
+                WHERE client_id = @ClientId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@ClientId", clientId);
+                        var count = (long)await command.ExecuteScalarAsync();
+                        return (int)count;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao contar os formulários.", ex);
             }
         }
     }

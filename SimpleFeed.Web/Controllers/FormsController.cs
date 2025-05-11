@@ -15,10 +15,12 @@ namespace SimpleFeed.Web.Controllers
     public class FormsController : ControllerBase
     {
         private readonly FormService _formService;
+        private readonly FeedbackService _feedbackService;
 
-        public FormsController(FormService formService)
+        public FormsController(FormService formService, FeedbackService feedbackService)
         {
             _formService = formService;
+            _feedbackService = feedbackService;
         }
 
 
@@ -114,6 +116,24 @@ namespace SimpleFeed.Web.Controllers
             return NoContent();
         }
 
+        [HttpGet("{clientId}/metrics")]
+        public async Task<IActionResult> GetMetrics(int clientId)
+        {
+            var newFeedbacksCount = await _feedbackService.GetNewFeedbacksCountAsync(clientId);
+            var allFeedbacksCount = await _feedbackService.GetAllFeedbacksCountAsync(clientId);
+            var todayFeedbacksCount = await _feedbackService.GetTodayFeedbacksCountAsync(clientId);
+            var allActiveFormsCount = await _formService.GetAllFormsCountAsync(clientId);
+            var feedbacksCountLast30Days = await _feedbackService.GetFeedbacksCountLast30DaysByClientAsync(clientId);
+
+            return Ok(new
+            {
+                NewFeedbacksCount = newFeedbacksCount,
+                AllFeedbacksCount = allFeedbacksCount,
+                TodayFeedbacksCount = todayFeedbacksCount,
+                AllActiveFormsCount = allActiveFormsCount,
+                FeedbacksCountLast30Days = feedbacksCountLast30Days
+            });
+        }
 
     }
 }
