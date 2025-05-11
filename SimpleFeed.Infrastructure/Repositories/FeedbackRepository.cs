@@ -166,18 +166,18 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task<int> GetNewFeedbacksCountAsync(int formId)
+        public async Task<int> GetNewFeedbacksCountAsync(int clientId)
         {
             try
             {
-                var query = "SELECT COUNT(*) FROM feedbacks WHERE form_id = @FormId AND is_new = TRUE";
+                var query = "SELECT COUNT(*) FROM feedbacks WHERE client_id = @ClientId AND is_new = TRUE";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
                     using (var command = new NpgsqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
+                        command.Parameters.AddWithValue("@ClientId", clientId);
                         return Convert.ToInt32(await command.ExecuteScalarAsync());
                     }
                 }
@@ -189,18 +189,18 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task<int> GetAllFeedbacksCountAsync(int formId)
+        public async Task<int> GetAllFeedbacksCountAsync(int clientId)
         {
             try
             {
-                var query = "SELECT COUNT(*) FROM feedbacks WHERE form_id = @FormId";
+                var query = "SELECT COUNT(*) FROM feedbacks WHERE client_id = @ClientId";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
                     using (var command = new NpgsqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
+                        command.Parameters.AddWithValue("@ClientId", clientId);
                         return Convert.ToInt32(await command.ExecuteScalarAsync());
                     }
                 }
@@ -212,18 +212,18 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task<int> GetTodayFeedbacksCountAsync(int formId)
+        public async Task<int> GetTodayFeedbacksCountAsync(int clientId)
         {
             try
             {
-                var query = "SELECT COUNT(*) FROM feedbacks WHERE form_id = @FormId AND DATE(submitted_at) = CURRENT_DATE";
+                var query = "SELECT COUNT(*) FROM feedbacks WHERE client_id = @ClientId AND DATE(submitted_at) = CURRENT_DATE";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
                     using (var command = new NpgsqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
+                        command.Parameters.AddWithValue("@ClientId", clientId);
                         return Convert.ToInt32(await command.ExecuteScalarAsync());
                     }
                 }
@@ -235,7 +235,6 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        //um metodo para trazer a somatoria de feedbacks recebidos ao logo de 30 dias atraz, o retorno deve ser um dicionario com a data e a quantidade de feedbacks recebidos
         public async Task<List<FeedbacksChartDto>> GetFeedbacksCountLast30DaysByClientAsync(int clientId)
         {
             var feedbacksCount = new List<FeedbacksChartDto>();

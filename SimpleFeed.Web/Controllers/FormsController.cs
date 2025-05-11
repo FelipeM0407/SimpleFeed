@@ -116,12 +116,12 @@ namespace SimpleFeed.Web.Controllers
             return NoContent();
         }
 
-        [HttpGet("{formId}/metrics")]
-        public async Task<IActionResult> GetMetrics(int formId, int clientId)
+        [HttpGet("{clientId}/metrics")]
+        public async Task<IActionResult> GetMetrics(int clientId)
         {
-            var newFeedbacksCount = await _feedbackService.GetNewFeedbacksCountAsync(formId);
-            var allFeedbacksCount = await _feedbackService.GetAllFeedbacksCountAsync(formId);
-            var todayFeedbacksCount = await _feedbackService.GetTodayFeedbacksCountAsync(formId);
+            var newFeedbacksCount = await _feedbackService.GetNewFeedbacksCountAsync(clientId);
+            var allFeedbacksCount = await _feedbackService.GetAllFeedbacksCountAsync(clientId);
+            var todayFeedbacksCount = await _feedbackService.GetTodayFeedbacksCountAsync(clientId);
             var allActiveFormsCount = await _formService.GetAllFormsCountAsync(clientId);
             var feedbacksCountLast30Days = await _feedbackService.GetFeedbacksCountLast30DaysByClientAsync(clientId);
 
