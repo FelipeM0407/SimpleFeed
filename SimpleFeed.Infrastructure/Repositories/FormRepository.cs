@@ -91,7 +91,7 @@ namespace SimpleFeed.Infrastructure.Repositories
         WHERE form_id = @FormId;";
                 var insertStyleQuery = @"
         INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
-        VALUES (@NewFormId, @Color, @ColorButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
+        VALUES (@NewFormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -167,6 +167,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                         insertStyleCommand.Parameters.AddWithValue("@NewFormId", newFormId);
                                         insertStyleCommand.Parameters.AddWithValue("@Color", (object?)color ?? DBNull.Value);
                                         insertStyleCommand.Parameters.AddWithValue("@ColorButton", (object?)colorButton ?? DBNull.Value);
+                                        insertStyleCommand.Parameters.AddWithValue("@ColorTextButton", (object?)colorTextButton ?? DBNull.Value);
                                         insertStyleCommand.Parameters.AddWithValue("@BackgroundColor", (object?)backgroundColor ?? DBNull.Value);
                                         insertStyleCommand.Parameters.AddWithValue("@FontColor", (object?)fontColor ?? DBNull.Value);
                                         insertStyleCommand.Parameters.AddWithValue("@FontFamily", (object?)fontFamily ?? DBNull.Value);
