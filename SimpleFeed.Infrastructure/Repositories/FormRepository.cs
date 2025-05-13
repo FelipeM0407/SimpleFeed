@@ -29,11 +29,14 @@ namespace SimpleFeed.Infrastructure.Repositories
                     COUNT(fe.id) AS ResponseCount,
                     (select count(*) from feedbacks fe where fe.is_new = true and fe.client_id = f.client_id and fe.form_id = f.id ) AS NewFeedbackCount,
                     f.updated_at AS LastUpdated,
-                    f.created_at AS CreatedAt
+                    f.created_at AS CreatedAt,
+                    fse.expiration_date AS ExpirationDate
+
                 FROM forms f
+                LEFT JOIN form_settings fse ON f.id = fse.form_id
                 LEFT JOIN feedbacks fe ON fe.form_id = f.id
                 WHERE f.client_id = @ClientId AND f.is_active = TRUE
-                GROUP BY f.id, f.name, f.updated_at, f.created_at
+                GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.expiration_date
                 ORDER BY f.created_at DESC;";
 
 
@@ -55,7 +58,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
                                     NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
                                     LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
-                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                                    ExpirationDate = reader.IsDBNull(reader.GetOrdinal("ExpirationDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("ExpirationDate"))
                                 });
                             }
                         }
@@ -736,7 +740,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 throw new Exception("Ocorreu um erro ao recuperar as configurações do formulário.", ex);
             }
         }
-    
+
         public async Task<int> GetAllFormsCountAsync(int clientId)
         {
             try
