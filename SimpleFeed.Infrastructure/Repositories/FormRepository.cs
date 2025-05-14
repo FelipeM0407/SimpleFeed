@@ -16,36 +16,72 @@ namespace SimpleFeed.Infrastructure.Repositories
             _connectionString = connectionString;
         }
 
-        public async Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId)
+        public async Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId, StatusFormDto statusFormDto)
         {
             try
             {
                 var forms = new List<FormDashboardDto>();
 
+                // Inicia a query base
                 var query = @"
-                SELECT 
-                    f.id AS Id, 
-                    f.name AS Name, 
-                    COUNT(fe.id) AS ResponseCount,
-                    (select count(*) from feedbacks fe where fe.is_new = true and fe.client_id = f.client_id and fe.form_id = f.id ) AS NewFeedbackCount,
-                    f.updated_at AS LastUpdated,
-                    f.created_at AS CreatedAt,
-                    fse.expiration_date AS ExpirationDate
+        SELECT 
+            f.id AS Id, 
+            f.name AS Name, 
+            COUNT(fe.id) AS ResponseCount,
+            (SELECT count(*) FROM feedbacks fe WHERE fe.is_new = true AND fe.client_id = f.client_id AND fe.form_id = f.id) AS NewFeedbackCount,
+            f.updated_at AS LastUpdated,
+            f.created_at AS CreatedAt,
+            fse.expiration_date AS ExpirationDate,
+            f.is_active AS Status
+        FROM forms f
+        LEFT JOIN form_settings fse ON f.id = fse.form_id
+        LEFT JOIN feedbacks fe ON fe.form_id = f.id
+        WHERE f.client_id = @ClientId";
 
-                FROM forms f
-                LEFT JOIN form_settings fse ON f.id = fse.form_id
-                LEFT JOIN feedbacks fe ON fe.form_id = f.id
-                WHERE f.client_id = @ClientId AND f.is_active = TRUE
-                GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.expiration_date
-                ORDER BY f.created_at DESC;";
+                // Condição para "Ativo" ou "Inativo"
+                if (statusFormDto.isActive)
+                {
+                    query += " AND f.is_active = @IsActive";
+                }
+                else if (statusFormDto.isInativo)
+                {
+                    query += " AND f.is_active = @IsInativo";
+                }
 
+                // Condição para "Expirado"
+                if (statusFormDto.isExpirado)
+                {
+                    query += " AND fse.expiration_date IS NOT NULL AND fse.expiration_date < CURRENT_TIMESTAMP";
+                }
 
+                // Condição para "Não Lido"
+                if (statusFormDto.isNaoLido)
+                {
+                    query += " AND fe.is_new = true";
+                }
+
+                // Finaliza a query
+                query += @"
+        GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.expiration_date
+        ORDER BY f.created_at DESC;";
+
+                // Executa a query no banco
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
                     using (var command = new NpgsqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@ClientId", clientId);
+
+                        // Parâmetros para Ativo e Inativo
+                        if (statusFormDto.isActive)
+                        {
+                            command.Parameters.AddWithValue("@IsActive", true);
+                        }
+                        else if (statusFormDto.isInativo)
+                        {
+                            command.Parameters.AddWithValue("@IsInativo", false);
+                        }
 
                         using (var reader = await command.ExecuteReaderAsync())
                         {
@@ -57,6 +93,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     Name = reader["Name"].ToString(),
                                     ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
                                     NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
+                                    Status = reader.GetBoolean(reader.GetOrdinal("Status")),
                                     LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
                                     CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
                                     ExpirationDate = reader.IsDBNull(reader.GetOrdinal("ExpirationDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("ExpirationDate"))
@@ -74,6 +111,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                 throw new Exception("Ocorreu um erro ao recuperar formulários ativos com respostas.", ex);
             }
         }
+
+
 
         public async Task<bool> DuplicateFormAsync(int formId, string formName)
         {
@@ -741,14 +780,14 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
-        public async Task<int> GetAllFormsCountAsync(int clientId)
+        public async Task<int> GetAllActiveFormsCountAsync(int clientId)
         {
             try
             {
                 var query = @"
                 SELECT COUNT(*)
                 FROM forms
-                WHERE client_id = @ClientId";
+                WHERE client_id = @ClientId and is_active = true";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -765,6 +804,60 @@ namespace SimpleFeed.Infrastructure.Repositories
             {
                 // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao contar os formulários.", ex);
+            }
+        }
+
+        public async Task<bool> InactivateFormAsync(int formId)
+        {
+            try
+            {
+                var query = @"
+                UPDATE forms
+                SET is_active = false, updated_at = NOW()
+                WHERE id = @FormId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", formId);
+                        var rowsAffected = await command.ExecuteNonQueryAsync();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao inativar o formulário.", ex);
+            }
+        }
+
+        public async Task<bool> ActivateFormAsync(int formId)
+        {
+            try
+            {
+                var query = @"
+                UPDATE forms
+                SET is_active = true, updated_at = NOW()
+                WHERE id = @FormId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", formId);
+                        var rowsAffected = await command.ExecuteNonQueryAsync();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao ativar o formulário.", ex);
             }
         }
     }

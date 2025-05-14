@@ -24,10 +24,10 @@ namespace SimpleFeed.Web.Controllers
         }
 
 
-        [HttpGet("{clientId}")]
-        public async Task<IActionResult> GetFormDashboard(int clientId)
+        [HttpPost("{clientId}")]
+        public async Task<IActionResult> GetFormDashboard(int clientId, [FromBody] StatusFormDto statusFormDto)
         {
-            var result = await _formService.GetActiveFormsWithResponsesAsync(clientId);
+            var result = await _formService.GetActiveFormsWithResponsesAsync(clientId, statusFormDto);
             return Ok(result);
         }
 
@@ -122,7 +122,7 @@ namespace SimpleFeed.Web.Controllers
             var newFeedbacksCount = await _feedbackService.GetNewFeedbacksCountAsync(clientId);
             var allFeedbacksCount = await _feedbackService.GetAllFeedbacksCountAsync(clientId);
             var todayFeedbacksCount = await _feedbackService.GetTodayFeedbacksCountAsync(clientId);
-            var allActiveFormsCount = await _formService.GetAllFormsCountAsync(clientId);
+            var allActiveFormsCount = await _formService.GetAllActiveFormsCountAsync(clientId);
             var feedbacksCountLast30Days = await _feedbackService.GetFeedbacksCountLast30DaysByClientAsync(clientId);
 
             return Ok(new
@@ -134,6 +134,32 @@ namespace SimpleFeed.Web.Controllers
                 FeedbacksCountLast30Days = feedbacksCountLast30Days
             });
         }
+        [HttpPost("{formId}/inactivate")]
+        public async Task<IActionResult> InactivateForm(int formId)
+        {
+            var result = await _formService.InactivateFormAsync(formId);
+            if (result)
+            {
+                return Ok(new { Message = "Form successfully inactivated." });
+            }
+            else
+            {
+                return BadRequest(new { Message = "Failed to inactivate the form." });
+            }
+        }
 
+        [HttpPost("{formId}/activate")]
+        public async Task<IActionResult> ActivateForm(int formId)
+        {
+            var result = await _formService.ActivateFormAsync(formId);
+            if (result)
+            {
+                return Ok(new { Message = "Form successfully activated." });
+            }
+            else
+            {
+                return BadRequest(new { Message = "Failed to activate the form." });
+            }
+        }
     }
 }
