@@ -20,9 +20,9 @@ namespace SimpleFeed.Application.Services
             _formStyleRepo = formStyleRepo;
         }
 
-        public async Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId)
+        public async Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId, StatusFormDto statusFormDto)
         {
-            return await _formRepository.GetActiveFormsWithResponsesAsync(clientId);
+            return await _formRepository.GetActiveFormsWithResponsesAsync(clientId, statusFormDto);
         }
 
         public async Task<bool> DuplicateFormAsync(int formId, string formName)
@@ -80,9 +80,19 @@ namespace SimpleFeed.Application.Services
             await _formStyleRepo.SaveAsync(dto);
         }
 
-        public async Task<int> GetAllFormsCountAsync(int clientId)
+        public async Task<int> GetAllActiveFormsCountAsync(int clientId)
         {
-            return await _formRepository.GetAllFormsCountAsync(clientId);
+            return await _formRepository.GetAllActiveFormsCountAsync(clientId);
+        }
+
+        public async Task<bool> InactivateFormAsync(int formId)
+        {
+            return await _formRepository.InactivateFormAsync(formId);
+        }
+
+        public async Task<bool> ActivateFormAsync(int formId)
+        {
+            return await _formRepository.ActivateFormAsync(formId);
         }
 
     }

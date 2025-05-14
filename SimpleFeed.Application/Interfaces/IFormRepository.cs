@@ -8,7 +8,7 @@ namespace SimpleFeed.Application.Interfaces
 {
     public interface IFormRepository
     {
-        Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId);
+        Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId, StatusFormDto statusFormDto);
         Task<bool> DuplicateFormAsync(int formId, string formName);
         Task RenameFormAsync(int formId, string newName);
         Task DeleteFormWithFeedbacksAsync(int formId);
@@ -18,9 +18,10 @@ namespace SimpleFeed.Application.Interfaces
         Task<bool> ValidateExistenceFeedbacks(int formId);
         Task<bool> SaveFormEditsAsync(EditFormDto editFormDto);
         Task<string> GetLogoBase64ByFormIdAsync(int formId);
-        Task<FormSettingsDto> GetSettingsByFormIdAsync(int formId);
-    
-        Task<int> GetAllFormsCountAsync(int clientId);
+        Task<FormSettingsDto> GetSettingsByFormIdAsync(int formId);    
+        Task<int> GetAllActiveFormsCountAsync(int clientId);
+        Task<bool> InactivateFormAsync(int formId);
+        Task<bool> ActivateFormAsync(int formId);
 
     }
 }

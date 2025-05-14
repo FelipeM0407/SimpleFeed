@@ -13,6 +13,8 @@ namespace SimpleFeed.Application.DTOs
         public int NewFeedbackCount { get; set; }
         public DateTime LastUpdated { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? ExpirationDate { get; set; }
+        public bool Status { get; set; }
 
     }
 }
