@@ -1,7 +1,9 @@
 using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Domain.Enums;
 using System.Collections.Generic;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -15,6 +17,43 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             _connectionString = connectionString;
         }
+
+        private async Task<int> LogClientActionAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            int clientId,
+            int formId,
+            ClientActionType actionType,
+            object details)
+        {
+            try
+            {
+                var insertLogQuery = @"
+            INSERT INTO client_action_logs (client_id, action_id, form_id, timestamp, details)
+            VALUES (@ClientId, @ActionId, @FormId, NOW(), @Details);";
+
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
+                var json = JsonSerializer.Serialize(details, jsonOptions);
+
+                using (var logCmd = new NpgsqlCommand(insertLogQuery, connection, transaction))
+                {
+                    logCmd.Parameters.AddWithValue("@ClientId", clientId);
+                    logCmd.Parameters.AddWithValue("@ActionId", (int)actionType); // enum → ID direto
+                    logCmd.Parameters.AddWithValue("@FormId", formId);
+                    logCmd.Parameters.AddWithValue("@Details", json);
+                    return await logCmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ocorreu um erro ao registrar a ação do cliente.", ex);
+            }
+        }
+
 
         public async Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId, StatusFormDto statusFormDto)
         {
@@ -120,21 +159,21 @@ namespace SimpleFeed.Infrastructure.Repositories
             {
                 var getFormQuery = "SELECT name, client_id, template_id, is_active FROM forms WHERE id = @FormId";
                 var insertFormQuery = @"
-        INSERT INTO forms (name, client_id, template_id, is_active, created_at, updated_at)
-        VALUES (@Name, @ClientId, @TemplateId, @IsActive, NOW(), NOW())
-        RETURNING id;";
+            INSERT INTO forms (name, client_id, template_id, is_active, created_at, updated_at)
+            VALUES (@Name, @ClientId, @TemplateId, @IsActive, NOW(), NOW())
+            RETURNING id;";
                 var duplicateFieldsQuery = @"
-        INSERT INTO form_fields (form_id, name, type, label, required, ordenation, options, field_type_id)
-        SELECT @NewFormId, name, type, label, required, ordenation, options, field_type_id
-        FROM form_fields
-        WHERE form_id = @OriginalFormId;";
+            INSERT INTO form_fields (form_id, name, type, label, required, ordenation, options, field_type_id)
+            SELECT @NewFormId, name, type, label, required, ordenation, options, field_type_id
+            FROM form_fields
+            WHERE form_id = @OriginalFormId;";
                 var getStyleQuery = @"
-        SELECT color, color_button, color_text_button, background_color, font_color, font_family, font_size
-        FROM form_style
-        WHERE form_id = @FormId;";
+            SELECT color, color_button, color_text_button, background_color, font_color, font_family, font_size
+            FROM form_style
+            WHERE form_id = @FormId;";
                 var insertStyleQuery = @"
-        INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
-        VALUES (@NewFormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
+            INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
+            VALUES (@NewFormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -143,92 +182,91 @@ namespace SimpleFeed.Infrastructure.Repositories
                     {
                         try
                         {
+                            string originalName;
+                            int clientId, templateId;
+                            string? color = null, colorButton = null, colorTextButton = null, backgroundColor = null, fontColor = null, fontFamily = null;
+                            int? fontSize = null;
+
                             // Buscar dados do formulário original
                             using var getFormCommand = new NpgsqlCommand(getFormQuery, connection, transaction);
                             getFormCommand.Parameters.AddWithValue("@FormId", formId);
 
-                            string? color = null, colorButton = null, colorTextButton = null, backgroundColor = null, fontColor = null, fontFamily = null;
-                            int? fontSize = null;
+                            using var reader = await getFormCommand.ExecuteReaderAsync();
+                            if (!await reader.ReadAsync())
+                                throw new Exception("Formulário não encontrado.");
 
-                            using (var reader = await getFormCommand.ExecuteReaderAsync())
+                            originalName = reader.GetString(0);
+                            clientId = reader.GetInt32(1);
+                            templateId = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+                            var isActive = reader.GetBoolean(3);
+                            reader.Close();
+
+                            // Inserir novo formulário
+                            int newFormId;
+                            using (var insertFormCommand = new NpgsqlCommand(insertFormQuery, connection, transaction))
                             {
-                                if (!await reader.ReadAsync())
-                                    throw new Exception("Formulário não encontrado.");
+                                insertFormCommand.Parameters.AddWithValue("@Name", formName);
+                                insertFormCommand.Parameters.AddWithValue("@ClientId", clientId);
+                                insertFormCommand.Parameters.AddWithValue("@TemplateId", templateId == 0 ? DBNull.Value : templateId);
+                                insertFormCommand.Parameters.AddWithValue("@IsActive", isActive);
+                                newFormId = (int)await insertFormCommand.ExecuteScalarAsync();
+                            }
 
-                                var name = reader.GetString(0);
-                                var clientId = reader.IsDBNull(1) ? (int?)null : reader.GetInt32(1);
-                                var templateId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
-                                var isActive = reader.GetBoolean(3);
+                            // Duplicar campos
+                            using (var duplicateFieldsCommand = new NpgsqlCommand(duplicateFieldsQuery, connection, transaction))
+                            {
+                                duplicateFieldsCommand.Parameters.AddWithValue("@NewFormId", newFormId);
+                                duplicateFieldsCommand.Parameters.AddWithValue("@OriginalFormId", formId);
+                                await duplicateFieldsCommand.ExecuteNonQueryAsync();
+                            }
 
-                                // Armazena dados básicos em variáveis para uso depois
-                                reader.Close();
-
-                                // Inserir novo formulário
-                                int newFormId;
-                                using (var insertFormCommand = new NpgsqlCommand(insertFormQuery, connection, transaction))
+                            // Estilo
+                            using (var getStyleCommand = new NpgsqlCommand(getStyleQuery, connection, transaction))
+                            {
+                                getStyleCommand.Parameters.AddWithValue("@FormId", formId);
+                                using var styleReader = await getStyleCommand.ExecuteReaderAsync();
+                                if (await styleReader.ReadAsync())
                                 {
-                                    insertFormCommand.Parameters.AddWithValue("@Name", formName);
-                                    insertFormCommand.Parameters.AddWithValue("@ClientId", clientId ?? (object)DBNull.Value);
-                                    insertFormCommand.Parameters.AddWithValue("@TemplateId", templateId ?? (object)DBNull.Value);
-                                    insertFormCommand.Parameters.AddWithValue("@IsActive", isActive);
-                                    newFormId = (int)await insertFormCommand.ExecuteScalarAsync();
-                                }
-
-                                // Duplicar campos do formulário original
-                                using (var duplicateFieldsCommand = new NpgsqlCommand(duplicateFieldsQuery, connection, transaction))
-                                {
-                                    duplicateFieldsCommand.Parameters.AddWithValue("@NewFormId", newFormId);
-                                    duplicateFieldsCommand.Parameters.AddWithValue("@OriginalFormId", formId);
-                                    await duplicateFieldsCommand.ExecuteNonQueryAsync();
-                                }
-
-                                // Buscar estilo do formulário original (somente depois que o reader anterior for totalmente finalizado)
-                                using (var getStyleCommand = new NpgsqlCommand(getStyleQuery, connection, transaction))
-                                {
-                                    getStyleCommand.Parameters.AddWithValue("@FormId", formId);
-
-                                    using (var styleReader = await getStyleCommand.ExecuteReaderAsync())
-                                    {
-                                        if (await styleReader.ReadAsync())
-                                        {
-                                            color = styleReader["color"]?.ToString();
-                                            colorButton = styleReader["color_button"]?.ToString();
-                                            colorTextButton = styleReader["color_text_button"]?.ToString();
-                                            backgroundColor = styleReader["background_color"]?.ToString();
-                                            fontColor = styleReader["font_color"]?.ToString();
-                                            fontFamily = styleReader["font_family"]?.ToString();
-                                            fontSize = styleReader.IsDBNull(styleReader.GetOrdinal("font_size")) ? null : styleReader.GetInt32(styleReader.GetOrdinal("font_size"));
-                                        }
-                                    }
-                                }
-
-                                // Inserir estilo para o novo formulário
-                                if (color != null || colorButton != null || backgroundColor != null)
-                                {
-                                    using (var insertStyleCommand = new NpgsqlCommand(insertStyleQuery, connection, transaction))
-                                    {
-                                        insertStyleCommand.Parameters.AddWithValue("@NewFormId", newFormId);
-                                        insertStyleCommand.Parameters.AddWithValue("@Color", (object?)color ?? DBNull.Value);
-                                        insertStyleCommand.Parameters.AddWithValue("@ColorButton", (object?)colorButton ?? DBNull.Value);
-                                        insertStyleCommand.Parameters.AddWithValue("@ColorTextButton", (object?)colorTextButton ?? DBNull.Value);
-                                        insertStyleCommand.Parameters.AddWithValue("@BackgroundColor", (object?)backgroundColor ?? DBNull.Value);
-                                        insertStyleCommand.Parameters.AddWithValue("@FontColor", (object?)fontColor ?? DBNull.Value);
-                                        insertStyleCommand.Parameters.AddWithValue("@FontFamily", (object?)fontFamily ?? DBNull.Value);
-                                        insertStyleCommand.Parameters.AddWithValue("@FontSize", (object?)fontSize ?? DBNull.Value);
-                                        await insertStyleCommand.ExecuteNonQueryAsync();
-                                    }
+                                    color = styleReader["color"]?.ToString();
+                                    colorButton = styleReader["color_button"]?.ToString();
+                                    colorTextButton = styleReader["color_text_button"]?.ToString();
+                                    backgroundColor = styleReader["background_color"]?.ToString();
+                                    fontColor = styleReader["font_color"]?.ToString();
+                                    fontFamily = styleReader["font_family"]?.ToString();
+                                    fontSize = styleReader.IsDBNull(styleReader.GetOrdinal("font_size")) ? null : styleReader.GetInt32(styleReader.GetOrdinal("font_size"));
                                 }
                             }
 
+                            if (color != null || colorButton != null || backgroundColor != null)
+                            {
+                                using var insertStyleCommand = new NpgsqlCommand(insertStyleQuery, connection, transaction);
+                                insertStyleCommand.Parameters.AddWithValue("@NewFormId", newFormId);
+                                insertStyleCommand.Parameters.AddWithValue("@Color", (object?)color ?? DBNull.Value);
+                                insertStyleCommand.Parameters.AddWithValue("@ColorButton", (object?)colorButton ?? DBNull.Value);
+                                insertStyleCommand.Parameters.AddWithValue("@ColorTextButton", (object?)colorTextButton ?? DBNull.Value);
+                                insertStyleCommand.Parameters.AddWithValue("@BackgroundColor", (object?)backgroundColor ?? DBNull.Value);
+                                insertStyleCommand.Parameters.AddWithValue("@FontColor", (object?)fontColor ?? DBNull.Value);
+                                insertStyleCommand.Parameters.AddWithValue("@FontFamily", (object?)fontFamily ?? DBNull.Value);
+                                insertStyleCommand.Parameters.AddWithValue("@FontSize", (object?)fontSize ?? DBNull.Value);
+                                await insertStyleCommand.ExecuteNonQueryAsync();
+                            }
 
-                            // Confirmar transação
+                            // Log da duplicação
+                            await LogClientActionAsync(connection, transaction, clientId, newFormId, ClientActionType.DuplicateForm, new
+                            {
+                                original_id = formId,
+                                original_name_form = originalName,
+                                new_form_name = formName,
+                                template_id = templateId
+                            });
+
                             await transaction.CommitAsync();
                             return true;
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e.Message);
                             await transaction.RollbackAsync();
+                            Console.WriteLine(e.Message);
                             return false;
                         }
                     }
@@ -236,11 +274,9 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao duplicar o formulário.", ex);
             }
         }
-
 
 
         public async Task RenameFormAsync(int formId, string newName)
@@ -271,23 +307,49 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
+                var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
                 var query = @"
-                DELETE FROM feedbacks WHERE form_id = @FormId;
-                DELETE FROM forms WHERE id = @FormId;";
+            DELETE FROM feedbacks WHERE form_id = @FormId;
+            DELETE FROM forms WHERE id = @FormId;";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
-                    using (var command = new NpgsqlCommand(query, connection))
+                    using (var transaction = await connection.BeginTransactionAsync())
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
-                        await command.ExecuteNonQueryAsync();
+                        try
+                        {
+                            int clientId;
+                            using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                            {
+                                getClientCmd.Parameters.AddWithValue("@FormId", formId);
+                                clientId = (int)await getClientCmd.ExecuteScalarAsync();
+                            }
+
+                            using (var command = new NpgsqlCommand(query, connection, transaction))
+                            {
+                                command.Parameters.AddWithValue("@FormId", formId);
+                                await command.ExecuteNonQueryAsync();
+                            }
+
+                            await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.DeleteForm, new
+                            {
+                                form_id = formId,
+                                reason = "Solicitação via painel"
+                            });
+
+                            await transaction.CommitAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            throw new Exception("Erro ao excluir o formulário com feedbacks.", ex);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao excluir o formulário com feedbacks.", ex);
             }
         }
@@ -320,8 +382,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                             }
 
                             var fieldsQuery = @"
-                    INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
-                    VALUES (@FormId, @Name, @Label, @Type, @Required, @Ordenation, @Options, @Field_Type_Id);";
+                        INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
+                        VALUES (@FormId, @Name, @Label, @Type, @Required, @Ordenation, @Options, @Field_Type_Id);";
 
                             foreach (var field in formDto.Fields)
                             {
@@ -334,7 +396,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     fieldCommand.Parameters.AddWithValue("@Required", field.Required);
                                     fieldCommand.Parameters.AddWithValue("@Ordenation", field.Ordenation);
                                     fieldCommand.Parameters.AddWithValue("@Options", string.IsNullOrWhiteSpace(field.Options) ?
-                                    DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
+                                        DBNull.Value : JsonDocument.Parse(field.Options)).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
                                     fieldCommand.Parameters.AddWithValue("@Field_Type_Id", field.Field_Type_Id);
 
                                     await fieldCommand.ExecuteNonQueryAsync();
@@ -344,8 +406,8 @@ namespace SimpleFeed.Infrastructure.Repositories
                             if (formDto.FormStyle != null)
                             {
                                 var styleQuery = @"
-                    INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
-                    VALUES (@FormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
+                            INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
+                            VALUES (@FormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
 
                                 using (var styleCommand = new NpgsqlCommand(styleQuery, connection, transaction))
                                 {
@@ -362,6 +424,13 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 }
                             }
 
+                            // Log de criação de formulário
+                            await LogClientActionAsync(connection, transaction, formDto.Client_Id, formId, ClientActionType.CreateForm, new
+                            {
+                                form_name = formDto.Name,
+                                template_id = formDto.Template_Id
+                            });
+
                             await transaction.CommitAsync();
                             return formId;
                         }
@@ -375,7 +444,6 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao criar o formulário.", ex);
             }
         }
@@ -694,6 +762,17 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 await upsertSettingsCommand.ExecuteNonQueryAsync();
                             }
 
+                            // Recupera o clientId
+                            var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
+                            int clientId;
+                            using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                            {
+                                getClientCmd.Parameters.AddWithValue("@FormId", formDto.FormId);
+                                clientId = (int)(await getClientCmd.ExecuteScalarAsync() ?? throw new Exception("Cliente não encontrado."));
+                            }
+
+                            await LogClientActionAsync(connection, transaction, clientId, formDto.FormId, ClientActionType.EditForm, string.Empty);
+
                             // Confirma a transação
                             await transaction.CommitAsync();
                             return true;
@@ -811,25 +890,59 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
+                var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
                 var query = @"
-                UPDATE forms
-                SET is_active = false, updated_at = NOW()
-                WHERE id = @FormId";
+            UPDATE forms
+            SET is_active = false, updated_at = NOW()
+            WHERE id = @FormId";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
-                    using (var command = new NpgsqlCommand(query, connection))
+                    using (var transaction = await connection.BeginTransactionAsync())
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
-                        var rowsAffected = await command.ExecuteNonQueryAsync();
-                        return rowsAffected > 0;
+                        try
+                        {
+                            int clientId;
+                            using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                            {
+                                getClientCmd.Parameters.AddWithValue("@FormId", formId);
+                                clientId = (int)await getClientCmd.ExecuteScalarAsync();
+                            }
+
+                            using (var command = new NpgsqlCommand(query, connection, transaction))
+                            {
+                                command.Parameters.AddWithValue("@FormId", formId);
+                                var rowsAffected = await command.ExecuteNonQueryAsync();
+
+                                if (rowsAffected > 0)
+                                {
+                                    await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.InactivateForm, new
+                                    {
+                                        form_id = formId,
+                                        reason = "Solicitação via painel",
+                                        inactivated_at = DateTime.UtcNow
+                                    });
+                                    await transaction.CommitAsync();
+                                    return true;
+                                }
+                                else
+                                {
+                                    await transaction.RollbackAsync();
+                                    return false;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            throw new Exception("Erro ao inativar o formulário.", ex);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao inativar o formulário.", ex);
             }
         }
@@ -838,25 +951,59 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
+                var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
                 var query = @"
-                UPDATE forms
-                SET is_active = true, updated_at = NOW()
-                WHERE id = @FormId";
+            UPDATE forms
+            SET is_active = true, updated_at = NOW()
+            WHERE id = @FormId";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
-                    using (var command = new NpgsqlCommand(query, connection))
+                    using (var transaction = await connection.BeginTransactionAsync())
                     {
-                        command.Parameters.AddWithValue("@FormId", formId);
-                        var rowsAffected = await command.ExecuteNonQueryAsync();
-                        return rowsAffected > 0;
+                        try
+                        {
+                            int clientId;
+                            using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                            {
+                                getClientCmd.Parameters.AddWithValue("@FormId", formId);
+                                clientId = (int)await getClientCmd.ExecuteScalarAsync();
+                            }
+
+                            using (var command = new NpgsqlCommand(query, connection, transaction))
+                            {
+                                command.Parameters.AddWithValue("@FormId", formId);
+                                var rowsAffected = await command.ExecuteNonQueryAsync();
+
+                                if (rowsAffected > 0)
+                                {
+                                    await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.ActivateForm, new
+                                    {
+                                        form_id = formId,
+                                        activation_method = "manual",
+                                        activated_at = DateTime.UtcNow
+                                    });
+                                    await transaction.CommitAsync();
+                                    return true;
+                                }
+                                else
+                                {
+                                    await transaction.RollbackAsync();
+                                    return false;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            throw new Exception("Erro ao ativar o formulário.", ex);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao ativar o formulário.", ex);
             }
         }

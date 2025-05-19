@@ -2,7 +2,10 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Domain.Enums;
 using System.Data;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 public class FormStyleRepository : IFormStyleRepository
@@ -12,6 +15,42 @@ public class FormStyleRepository : IFormStyleRepository
     public FormStyleRepository(string connectionString)
     {
         _connectionString = connectionString;
+    }
+
+    private async Task<int> LogClientActionAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            int clientId,
+            int formId,
+            ClientActionType actionType,
+            object details)
+    {
+        try
+        {
+            var insertLogQuery = @"
+            INSERT INTO client_action_logs (client_id, action_id, form_id, timestamp, details)
+            VALUES (@ClientId, @ActionId, @FormId, NOW(), @Details);";
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            var json = JsonSerializer.Serialize(details, jsonOptions);
+
+            using (var logCmd = new NpgsqlCommand(insertLogQuery, connection, transaction))
+            {
+                logCmd.Parameters.AddWithValue("@ClientId", clientId);
+                logCmd.Parameters.AddWithValue("@ActionId", (int)actionType); // enum → ID direto
+                logCmd.Parameters.AddWithValue("@FormId", formId);
+                logCmd.Parameters.AddWithValue("@Details", json);
+                return await logCmd.ExecuteNonQueryAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Ocorreu um erro ao registrar a ação do cliente.", ex);
+        }
     }
 
     public async Task<FormStyleDto?> GetByFormIdAsync(int formId)
@@ -125,6 +164,16 @@ public class FormStyleRepository : IFormStyleRepository
                             await command.ExecuteNonQueryAsync();
                         }
                     }
+                    // Recupera o clientId
+                    var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
+                    int clientId;
+                    using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                    {
+                        getClientCmd.Parameters.AddWithValue("@FormId", dto.FormId);
+                        clientId = (int)(await getClientCmd.ExecuteScalarAsync() ?? throw new Exception("Cliente não encontrado."));
+                    }
+
+                    await LogClientActionAsync(connection, transaction, clientId, dto.FormId, ClientActionType.EditStyleForm, string.Empty);
 
                     await transaction.CommitAsync();
                 }

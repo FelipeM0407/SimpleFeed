@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Domain.Enums;
 
 namespace SimpleFeed.Infrastructure.Repositories
 {
@@ -16,6 +19,42 @@ namespace SimpleFeed.Infrastructure.Repositories
         public FeedbackRepository(string connectionString)
         {
             _connectionString = connectionString;
+        }
+
+        private async Task<int> LogClientActionAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            int clientId,
+            int formId,
+            ClientActionType actionType,
+            object details)
+        {
+            try
+            {
+                var insertLogQuery = @"
+            INSERT INTO client_action_logs (client_id, action_id, form_id, timestamp, details)
+            VALUES (@ClientId, @ActionId, @FormId, NOW(), @Details);";
+
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
+                var json = JsonSerializer.Serialize(details, jsonOptions);
+
+                using (var logCmd = new NpgsqlCommand(insertLogQuery, connection, transaction))
+                {
+                    logCmd.Parameters.AddWithValue("@ClientId", clientId);
+                    logCmd.Parameters.AddWithValue("@ActionId", (int)actionType); // enum → ID direto
+                    logCmd.Parameters.AddWithValue("@FormId", formId);
+                    logCmd.Parameters.AddWithValue("@Details", json);
+                    return await logCmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ocorreu um erro ao registrar a ação do cliente.", ex);
+            }
         }
 
         public async Task<IEnumerable<FeedbackDetailDto>> GetFeedbacksByFormAsync(int formId)
@@ -147,24 +186,60 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
-                var query = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
+                var getFormQuery = "SELECT form_id FROM feedbacks WHERE id = ANY(@FeedbackIds) LIMIT 1";
+                var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
+                var deleteQuery = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
-                    using (var command = new NpgsqlCommand(query, connection))
+                    using (var transaction = await connection.BeginTransactionAsync())
                     {
-                        command.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
-                        await command.ExecuteNonQueryAsync();
+                        try
+                        {
+                            int formId;
+                            using (var getFormCmd = new NpgsqlCommand(getFormQuery, connection, transaction))
+                            {
+                                getFormCmd.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
+                                formId = (int)(await getFormCmd.ExecuteScalarAsync() ?? throw new Exception("Formulário não encontrado."));
+                            }
+
+                            int clientId;
+                            using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                            {
+                                getClientCmd.Parameters.AddWithValue("@FormId", formId);
+                                clientId = (int)(await getClientCmd.ExecuteScalarAsync() ?? throw new Exception("Cliente não encontrado."));
+                            }
+
+                            using (var deleteCmd = new NpgsqlCommand(deleteQuery, connection, transaction))
+                            {
+                                deleteCmd.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
+                                await deleteCmd.ExecuteNonQueryAsync();
+                            }
+
+                            await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.ExcludeFeedback, new
+                            {
+                                form_id = formId,
+                                deleted_count = feedbackIds.Length,
+                                reason = "Exclusão solicitada manualmente"
+                            });
+
+                            await transaction.CommitAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            throw new Exception("Erro ao deletar feedbacks com log.", ex);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
                 throw new Exception("Ocorreu um erro ao deletar os feedbacks.", ex);
             }
         }
+
 
         public async Task<int> GetNewFeedbacksCountAsync(int clientId)
         {
@@ -258,26 +333,26 @@ namespace SimpleFeed.Infrastructure.Repositories
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
-            await connection.OpenAsync();
-            using (var command = new NpgsqlCommand(query, connection))
-            {
-                command.Parameters.AddWithValue("@ClientId", clientId);
-
-                using (var reader = await command.ExecuteReaderAsync())
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
                 {
-                while (await reader.ReadAsync())
-                {
-                    var date = reader.GetDateTime(reader.GetOrdinal("day"));
-                    var count = reader.GetInt32(reader.GetOrdinal("count"));
+                    command.Parameters.AddWithValue("@ClientId", clientId);
 
-                    feedbacksCount.Add(new FeedbacksChartDto
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                    Label = date.ToString("dd/MMM", new CultureInfo("pt-BR")).Replace(date.ToString("MMM", new CultureInfo("pt-BR")), CultureInfo.CurrentCulture.TextInfo.ToTitleCase(date.ToString("MMM", new CultureInfo("pt-BR")))),
-                    Value = count
-                    });
+                        while (await reader.ReadAsync())
+                        {
+                            var date = reader.GetDateTime(reader.GetOrdinal("day"));
+                            var count = reader.GetInt32(reader.GetOrdinal("count"));
+
+                            feedbacksCount.Add(new FeedbacksChartDto
+                            {
+                                Label = date.ToString("dd/MMM", new CultureInfo("pt-BR")).Replace(date.ToString("MMM", new CultureInfo("pt-BR")), CultureInfo.CurrentCulture.TextInfo.ToTitleCase(date.ToString("MMM", new CultureInfo("pt-BR")))),
+                                Value = count
+                            });
+                        }
+                    }
                 }
-                }
-            }
             }
 
             return feedbacksCount;
