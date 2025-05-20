@@ -98,7 +98,6 @@ public class FormStyleRepository : IFormStyleRepository
         {
             await connection.OpenAsync();
 
-            // Usamos uma transação para garantir atomicidade
             using (var transaction = await connection.BeginTransactionAsync())
             {
                 try
@@ -106,12 +105,9 @@ public class FormStyleRepository : IFormStyleRepository
                     var existsQuery = @"SELECT COUNT(1) FROM form_style WHERE form_id = @FormId";
                     bool exists;
 
-                    // Usar uma conexão separada ou garantir que o comando execute totalmente antes de outro
                     using (var existsCommand = new NpgsqlCommand(existsQuery, connection, transaction))
                     {
                         existsCommand.Parameters.AddWithValue("@FormId", dto.FormId);
-
-                        // Executa e aguarda completamente ANTES de prosseguir
                         var result = await existsCommand.ExecuteScalarAsync();
                         exists = (result != null && Convert.ToInt64(result) > 0);
                     }
@@ -164,16 +160,30 @@ public class FormStyleRepository : IFormStyleRepository
                             await command.ExecuteNonQueryAsync();
                         }
                     }
-                    // Recupera o clientId
-                    var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
+                    // Recupera o clientId e o nome do formulário
+                    var getClientQuery = "SELECT client_id, name FROM forms WHERE id = @FormId";
                     int clientId;
+                    string formName;
                     using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
                     {
                         getClientCmd.Parameters.AddWithValue("@FormId", dto.FormId);
-                        clientId = (int)(await getClientCmd.ExecuteScalarAsync() ?? throw new Exception("Cliente não encontrado."));
+                        using (var reader = await getClientCmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                clientId = reader.GetInt32(reader.GetOrdinal("client_id"));
+                                formName = reader["name"] as string ?? string.Empty;
+                            }
+                            else
+                            {
+                                throw new Exception("Cliente não encontrado.");
+                            }
+                        }
                     }
 
-                    await LogClientActionAsync(connection, transaction, clientId, dto.FormId, ClientActionType.EditStyleForm, string.Empty);
+                    // Envia o nome do formulário nos detalhes do log
+                    var logDetails = new { form_name = formName };
+                    await LogClientActionAsync(connection, transaction, clientId, dto.FormId, ClientActionType.EditStyleForm, logDetails);
 
                     await transaction.CommitAsync();
                 }

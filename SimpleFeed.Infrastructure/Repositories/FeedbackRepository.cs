@@ -186,57 +186,66 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
-                var getFormQuery = "SELECT form_id FROM feedbacks WHERE id = ANY(@FeedbackIds) LIMIT 1";
-                var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
-                var deleteQuery = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
+            var getFormQuery = "SELECT form_id FROM feedbacks WHERE id = ANY(@FeedbackIds) LIMIT 1";
+            var getFormNameQuery = "SELECT name FROM forms WHERE id = @FormId";
+            var getClientQuery = "SELECT client_id FROM forms WHERE id = @FormId";
+            var deleteQuery = "DELETE FROM feedbacks WHERE id = ANY(@FeedbackIds)";
 
-                using (var connection = new NpgsqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var transaction = await connection.BeginTransactionAsync())
                 {
-                    await connection.OpenAsync();
-                    using (var transaction = await connection.BeginTransactionAsync())
+                try
+                {
+                    int formId;
+                    using (var getFormCmd = new NpgsqlCommand(getFormQuery, connection, transaction))
                     {
-                        try
-                        {
-                            int formId;
-                            using (var getFormCmd = new NpgsqlCommand(getFormQuery, connection, transaction))
-                            {
-                                getFormCmd.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
-                                formId = (int)(await getFormCmd.ExecuteScalarAsync() ?? throw new Exception("Formulário não encontrado."));
-                            }
-
-                            int clientId;
-                            using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
-                            {
-                                getClientCmd.Parameters.AddWithValue("@FormId", formId);
-                                clientId = (int)(await getClientCmd.ExecuteScalarAsync() ?? throw new Exception("Cliente não encontrado."));
-                            }
-
-                            using (var deleteCmd = new NpgsqlCommand(deleteQuery, connection, transaction))
-                            {
-                                deleteCmd.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
-                                await deleteCmd.ExecuteNonQueryAsync();
-                            }
-
-                            await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.ExcludeFeedback, new
-                            {
-                                form_id = formId,
-                                deleted_count = feedbackIds.Length,
-                                reason = "Exclusão solicitada manualmente"
-                            });
-
-                            await transaction.CommitAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            await transaction.RollbackAsync();
-                            throw new Exception("Erro ao deletar feedbacks com log.", ex);
-                        }
+                    getFormCmd.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
+                    formId = (int)(await getFormCmd.ExecuteScalarAsync() ?? throw new Exception("Formulário não encontrado."));
                     }
+
+                    string formName;
+                    using (var getFormNameCmd = new NpgsqlCommand(getFormNameQuery, connection, transaction))
+                    {
+                    getFormNameCmd.Parameters.AddWithValue("@FormId", formId);
+                    formName = (string)(await getFormNameCmd.ExecuteScalarAsync() ?? throw new Exception("Nome do formulário não encontrado."));
+                    }
+
+                    int clientId;
+                    using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                    {
+                    getClientCmd.Parameters.AddWithValue("@FormId", formId);
+                    clientId = (int)(await getClientCmd.ExecuteScalarAsync() ?? throw new Exception("Cliente não encontrado."));
+                    }
+
+                    using (var deleteCmd = new NpgsqlCommand(deleteQuery, connection, transaction))
+                    {
+                    deleteCmd.Parameters.AddWithValue("@FeedbackIds", feedbackIds);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                    }
+
+                    await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.ExcludeFeedback, new
+                    {
+                    form_id = formId,
+                    form_name = formName,
+                    deleted_count = feedbackIds.Length,
+                    reason = "Exclusão solicitada manualmente"
+                    });
+
+                    await transaction.CommitAsync();
                 }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw new Exception("Erro ao deletar feedbacks com log.", ex);
+                }
+                }
+            }
             }
             catch (Exception ex)
             {
-                throw new Exception("Ocorreu um erro ao deletar os feedbacks.", ex);
+            throw new Exception("Ocorreu um erro ao deletar os feedbacks.", ex);
             }
         }
 

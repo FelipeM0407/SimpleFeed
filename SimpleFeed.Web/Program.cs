@@ -117,6 +117,7 @@ builder.Services.AddScoped<IClientRepository, ClientRepository>();
 builder.Services.AddScoped<IFeedbackFormRepository, FeedbackFormRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IFormStyleRepository, FormStyleRepository>();
+builder.Services.AddScoped<IActionsLogRepository, ActionsLogRepository>();
 
 
 
@@ -129,6 +130,7 @@ builder.Services.AddScoped<TemplateService>();
 builder.Services.AddScoped<ClientService>();
 builder.Services.AddScoped<FeedbackFormService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<ActionsLogService>();
 
 builder.Services.AddControllers();
 
