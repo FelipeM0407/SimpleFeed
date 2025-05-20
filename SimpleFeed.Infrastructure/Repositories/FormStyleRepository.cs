@@ -2,7 +2,10 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Domain.Enums;
 using System.Data;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 public class FormStyleRepository : IFormStyleRepository
@@ -12,6 +15,42 @@ public class FormStyleRepository : IFormStyleRepository
     public FormStyleRepository(string connectionString)
     {
         _connectionString = connectionString;
+    }
+
+    private async Task<int> LogClientActionAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            int clientId,
+            int formId,
+            ClientActionType actionType,
+            object details)
+    {
+        try
+        {
+            var insertLogQuery = @"
+            INSERT INTO client_action_logs (client_id, action_id, form_id, timestamp, details)
+            VALUES (@ClientId, @ActionId, @FormId, NOW(), @Details);";
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            var json = JsonSerializer.Serialize(details, jsonOptions);
+
+            using (var logCmd = new NpgsqlCommand(insertLogQuery, connection, transaction))
+            {
+                logCmd.Parameters.AddWithValue("@ClientId", clientId);
+                logCmd.Parameters.AddWithValue("@ActionId", (int)actionType); // enum → ID direto
+                logCmd.Parameters.AddWithValue("@FormId", formId);
+                logCmd.Parameters.AddWithValue("@Details", json);
+                return await logCmd.ExecuteNonQueryAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Ocorreu um erro ao registrar a ação do cliente.", ex);
+        }
     }
 
     public async Task<FormStyleDto?> GetByFormIdAsync(int formId)
@@ -59,7 +98,6 @@ public class FormStyleRepository : IFormStyleRepository
         {
             await connection.OpenAsync();
 
-            // Usamos uma transação para garantir atomicidade
             using (var transaction = await connection.BeginTransactionAsync())
             {
                 try
@@ -67,12 +105,9 @@ public class FormStyleRepository : IFormStyleRepository
                     var existsQuery = @"SELECT COUNT(1) FROM form_style WHERE form_id = @FormId";
                     bool exists;
 
-                    // Usar uma conexão separada ou garantir que o comando execute totalmente antes de outro
                     using (var existsCommand = new NpgsqlCommand(existsQuery, connection, transaction))
                     {
                         existsCommand.Parameters.AddWithValue("@FormId", dto.FormId);
-
-                        // Executa e aguarda completamente ANTES de prosseguir
                         var result = await existsCommand.ExecuteScalarAsync();
                         exists = (result != null && Convert.ToInt64(result) > 0);
                     }
@@ -125,6 +160,30 @@ public class FormStyleRepository : IFormStyleRepository
                             await command.ExecuteNonQueryAsync();
                         }
                     }
+                    // Recupera o clientId e o nome do formulário
+                    var getClientQuery = "SELECT client_id, name FROM forms WHERE id = @FormId";
+                    int clientId;
+                    string formName;
+                    using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                    {
+                        getClientCmd.Parameters.AddWithValue("@FormId", dto.FormId);
+                        using (var reader = await getClientCmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                clientId = reader.GetInt32(reader.GetOrdinal("client_id"));
+                                formName = reader["name"] as string ?? string.Empty;
+                            }
+                            else
+                            {
+                                throw new Exception("Cliente não encontrado.");
+                            }
+                        }
+                    }
+
+                    // Envia o nome do formulário nos detalhes do log
+                    var logDetails = new { form_name = formName };
+                    await LogClientActionAsync(connection, transaction, clientId, dto.FormId, ClientActionType.EditStyleForm, logDetails);
 
                     await transaction.CommitAsync();
                 }
