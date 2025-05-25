@@ -8,6 +8,7 @@ namespace SimpleFeed.Application.DTOs
     public class FormSettingsDto
     {
         public DateTime? ExpirationDate { get; set; }
+        public bool Is_Active { get; set; }
 
     }
 }
