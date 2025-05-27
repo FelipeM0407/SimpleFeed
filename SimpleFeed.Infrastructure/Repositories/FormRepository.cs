@@ -59,10 +59,10 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
-                var forms = new List<FormDashboardDto>();
+            var forms = new List<FormDashboardDto>();
 
-                // Inicia a query base
-                var query = @"
+            // Inicia a query base
+            var query = @"
         SELECT 
             f.id AS Id, 
             f.name AS Name, 
@@ -70,84 +70,78 @@ namespace SimpleFeed.Infrastructure.Repositories
             (SELECT count(*) FROM feedbacks fe WHERE fe.is_new = true AND fe.client_id = f.client_id AND fe.form_id = f.id) AS NewFeedbackCount,
             f.updated_at AS LastUpdated,
             f.created_at AS CreatedAt,
-            fse.expiration_date AS ExpirationDate,
+            fse.inativation_date AS InativationDate,
             f.is_active AS Status
         FROM forms f
         LEFT JOIN form_settings fse ON f.id = fse.form_id
         LEFT JOIN feedbacks fe ON fe.form_id = f.id
         WHERE f.client_id = @ClientId";
 
-                // Condição para "Ativo" ou "Inativo"
+            // Condição para "Ativo" ou "Inativo"
+            if (statusFormDto.isActive)
+            {
+                query += " AND f.is_active = @IsActive";
+            }
+            else if (statusFormDto.isInativo)
+            {
+                query += " AND f.is_active = @IsInativo";
+            }
+
+            // Condição para "Não Lido"
+            if (statusFormDto.isNaoLido)
+            {
+                query += " AND fe.is_new = true";
+            }
+
+            // Finaliza a query
+            query += @"
+        GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.inativation_date
+        ORDER BY f.created_at DESC;";
+
+            // Executa a query no banco
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                command.Parameters.AddWithValue("@ClientId", clientId);
+
+                // Parâmetros para Ativo e Inativo
                 if (statusFormDto.isActive)
                 {
-                    query += " AND f.is_active = @IsActive";
+                    command.Parameters.AddWithValue("@IsActive", true);
                 }
                 else if (statusFormDto.isInativo)
                 {
-                    query += " AND f.is_active = @IsInativo";
+                    command.Parameters.AddWithValue("@IsInativo", false);
                 }
 
-                // Condição para "Expirado"
-                if (statusFormDto.isExpirado)
+                using (var reader = await command.ExecuteReaderAsync())
                 {
-                    query += " AND fse.expiration_date IS NOT NULL AND fse.expiration_date < CURRENT_TIMESTAMP";
-                }
-
-                // Condição para "Não Lido"
-                if (statusFormDto.isNaoLido)
-                {
-                    query += " AND fe.is_new = true";
-                }
-
-                // Finaliza a query
-                query += @"
-        GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.expiration_date
-        ORDER BY f.created_at DESC;";
-
-                // Executa a query no banco
-                using (var connection = new NpgsqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-                    using (var command = new NpgsqlCommand(query, connection))
+                    while (await reader.ReadAsync())
                     {
-                        command.Parameters.AddWithValue("@ClientId", clientId);
-
-                        // Parâmetros para Ativo e Inativo
-                        if (statusFormDto.isActive)
-                        {
-                            command.Parameters.AddWithValue("@IsActive", true);
-                        }
-                        else if (statusFormDto.isInativo)
-                        {
-                            command.Parameters.AddWithValue("@IsInativo", false);
-                        }
-
-                        using (var reader = await command.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                forms.Add(new FormDashboardDto
-                                {
-                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                    Name = reader["Name"].ToString(),
-                                    ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
-                                    NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
-                                    Status = reader.GetBoolean(reader.GetOrdinal("Status")),
-                                    LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
-                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
-                                    ExpirationDate = reader.IsDBNull(reader.GetOrdinal("ExpirationDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("ExpirationDate"))
-                                });
-                            }
-                        }
+                    forms.Add(new FormDashboardDto
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        Name = reader["Name"].ToString(),
+                        ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
+                        NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
+                        Status = reader.GetBoolean(reader.GetOrdinal("Status")),
+                        LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
+                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                        InativationDate = reader.IsDBNull(reader.GetOrdinal("InativationDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("InativationDate"))
+                    });
                     }
                 }
+                }
+            }
 
-                return forms;
+            return forms;
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it as needed
-                throw new Exception("Ocorreu um erro ao recuperar formulários ativos com respostas.", ex);
+            // Log the exception or handle it as needed
+            throw new Exception("Ocorreu um erro ao recuperar formulários ativos com respostas.", ex);
             }
         }
 
@@ -751,21 +745,21 @@ namespace SimpleFeed.Infrastructure.Repositories
 
                             // Insere ou atualiza a data de expiração na tabela form_settings
                             var upsertSettingsQuery = @"
-                    INSERT INTO form_settings (form_id, expiration_date, created_at, updated_at)
-                    VALUES (@FormId, @ExpirationDate, NOW(), NOW())
+                    INSERT INTO form_settings (form_id, inativation_date, created_at, updated_at)
+                    VALUES (@FormId, @InativationDate, NOW(), NOW())
                     ON CONFLICT (form_id)
                     DO UPDATE SET
-                        expiration_date = EXCLUDED.expiration_date,
+                        inativation_date = EXCLUDED.inativation_date,
                         updated_at = NOW();";
 
                             using (var upsertSettingsCommand = new NpgsqlCommand(upsertSettingsQuery, connection, transaction))
                             {
                                 upsertSettingsCommand.Parameters.AddWithValue("@FormId", formDto.FormId);
 
-                                if (formDto.ExpirationDate == null)
-                                    upsertSettingsCommand.Parameters.AddWithValue("@ExpirationDate", DBNull.Value);
+                                if (formDto.InativationDate == null)
+                                    upsertSettingsCommand.Parameters.AddWithValue("@InativationDate", DBNull.Value);
                                 else
-                                    upsertSettingsCommand.Parameters.AddWithValue("@ExpirationDate", formDto.ExpirationDate);
+                                    upsertSettingsCommand.Parameters.AddWithValue("@InativationDate", formDto.InativationDate);
 
                                 await upsertSettingsCommand.ExecuteNonQueryAsync();
                             }
@@ -844,7 +838,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             try
             {
                 var query = @"
-            SELECT f.is_active, fs.expiration_date
+            SELECT f.is_active, fs.inativation_date
             FROM forms f
             LEFT JOIN form_settings fs ON f.id = fs.form_id
             WHERE f.id = @FormId";
@@ -862,9 +856,9 @@ namespace SimpleFeed.Infrastructure.Repositories
                             {
                                 return new FormSettingsDto
                                 {
-                                    ExpirationDate = reader.IsDBNull(reader.GetOrdinal("expiration_date"))
+                                    InativationDate = reader.IsDBNull(reader.GetOrdinal("inativation_date"))
                                     ? (DateTime?)null
-                                    : reader.GetDateTime(reader.GetOrdinal("expiration_date")),
+                                    : reader.GetDateTime(reader.GetOrdinal("inativation_date")),
                                     Is_Active = reader.GetBoolean(reader.GetOrdinal("is_active"))
                                 };
                             }

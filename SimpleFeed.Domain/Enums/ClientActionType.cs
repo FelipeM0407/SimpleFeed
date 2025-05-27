@@ -10,7 +10,8 @@ namespace SimpleFeed.Domain.Enums
         AiAnalysis = 6,
         ExcludeFeedback = 7,
         DuplicateForm = 8,
-        EditStyleForm = 9
+        EditStyleForm = 9,
+        ScheduledFormInativation = 10
     }
 
 }

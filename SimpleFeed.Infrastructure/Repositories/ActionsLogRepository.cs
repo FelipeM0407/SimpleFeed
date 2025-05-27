@@ -21,56 +21,65 @@ namespace SimpleFeed.Infrastructure.Repositories
         public async Task<List<ActionLogResultDto>> GetLogsAsync(ActionLogFilterDto filter)
         {
             var result = new List<ActionLogResultDto>();
-            var query = @"
+            try
+            {
+                var query = @"
             SELECT cal.timestamp, at.display_name, at.description, cal.details
             FROM client_action_logs cal
             INNER JOIN action_types at ON at.id = cal.action_id
             WHERE cal.client_id = @ClientId";
 
-            if (filter.ActionTypes != null && filter.ActionTypes.Any())
-                query += $" AND cal.action_id = ANY(@Actions)";
+                if (filter.ActionTypes != null && filter.ActionTypes.Any())
+                    query += $" AND cal.action_id = ANY(@Actions)";
 
-            if (filter.StartDate.HasValue)
-                query += " AND cal.timestamp >= @StartDate";
+                if (filter.StartDate.HasValue)
+                    query += " AND cal.timestamp >= @StartDate";
 
-            if (filter.EndDate.HasValue)
-                query += " AND cal.timestamp <= @EndDate";
+                if (filter.EndDate.HasValue)
+                    query += " AND cal.timestamp <= @EndDate";
 
-            using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+                query += " ORDER BY cal.timestamp DESC";
 
-            using var command = new NpgsqlCommand(query, connection);
-            command.Parameters.AddWithValue("@ClientId", filter.ClientId);
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            if (filter.ActionTypes != null && filter.ActionTypes.Any())
-                command.Parameters.AddWithValue("@Actions", filter.ActionTypes.Select(x => (int)x).ToArray());
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ClientId", filter.ClientId);
 
-            if (filter.StartDate.HasValue)
-                command.Parameters.AddWithValue("@StartDate", filter.StartDate.Value);
+                if (filter.ActionTypes != null && filter.ActionTypes.Any())
+                    command.Parameters.AddWithValue("@Actions", filter.ActionTypes.Select(x => (int)x).ToArray());
 
-            if (filter.EndDate.HasValue)
-                command.Parameters.AddWithValue("@EndDate", filter.EndDate.Value);
+                if (filter.StartDate.HasValue)
+                    command.Parameters.AddWithValue("@StartDate", filter.StartDate.Value);
 
-            using var reader = await command.ExecuteReaderAsync();
+                if (filter.EndDate.HasValue)
+                    command.Parameters.AddWithValue("@EndDate", filter.EndDate.Value);
 
-            while (await reader.ReadAsync())
-            {
-                var action = reader.GetString(1);
-                var description = reader.GetString(2);
-                var detailsRaw = reader.IsDBNull(3) ? null : reader.GetString(3);
+                using var reader = await command.ExecuteReaderAsync();
 
-                var obs = GerarObservacao(detailsRaw, action);
-
-                result.Add(new ActionLogResultDto
+                while (await reader.ReadAsync())
                 {
-                    Timestamp = reader.GetDateTime(0),
-                    Action = action,
-                    Description = description,
-                    Observations = obs
-                });
+                    var action = reader.GetString(1);
+                    var description = reader.GetString(2);
+                    var detailsRaw = reader.IsDBNull(3) ? null : reader.GetString(3);
+
+                    var obs = GerarObservacao(detailsRaw, action);
+
+                    result.Add(new ActionLogResultDto
+                    {
+                        Timestamp = reader.GetDateTime(0),
+                        Action = action,
+                        Description = description,
+                        Observations = obs
+                    });
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao buscar logs de ações.", ex);
             }
 
-            return result;
         }
 
         private string GerarObservacao(string? detailsJson, string action)
@@ -116,6 +125,10 @@ namespace SimpleFeed.Infrastructure.Repositories
                     root.TryGetProperty("reason", out var reasonInactive) && root.TryGetProperty("form_name", out var formNameInact)
                         ? $"Formulário \"{formNameInact.GetString()}\" inativado. Motivo: {reasonInactive.GetString()}"
                         : "Formulário inativado",
+                "Inativação de Formulário Agendada" =>
+                    root.TryGetProperty("form_name", out var formNameScheduled)
+                        ? $"Formulário \"{formNameScheduled.GetString()}\" inativado por agendamento"
+                        : "Formulário inativado por agendamento",
 
                 "Edição de Formulário" =>
                     root.TryGetProperty("form_name", out var formNameEdit)
