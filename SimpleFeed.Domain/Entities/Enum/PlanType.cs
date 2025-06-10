@@ -3,8 +3,9 @@ namespace SimpleFeed.Domain.Entities.Enum
     public enum Plans
     {
         Free = 1,
-        Basic = 2,
-        Pro = 3,
-        Premium = 4
+        Basico = 2,
+        Intermediario = 3,
+        Profissional = 4,
+        SobDemanda = 5
     }
 }

@@ -1,0 +1,38 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SimpleFeed.Application.Services;
+
+namespace SimpleFeed.Web.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class PlansController : ControllerBase
+    {
+
+        private readonly PlansService _plansService;
+
+        public PlansController(PlansService plansService)
+        {
+            _plansService = plansService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllPlans()
+        {
+            try
+            {
+                var plans = await _plansService.GetAllPlansAsync();
+                return Ok(plans);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+    }
+}

@@ -27,7 +27,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var query = @"
                     SELECT id, name, description, fields, plan_id, created_at, updated_at
                     FROM form_templates
-                    WHERE plan_id = @PlanId";
+                    WHERE plan_id <= @PlanId";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -117,7 +117,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var query = @"
                     SELECT ft.id, ft.name, ft.description, ft.fields
                     FROM clients cl
-                    INNER JOIN form_templates ft ON ft.plan_id = cl.""PlanId""
+                    INNER JOIN form_templates ft ON ft.plan_id <= cl.""PlanId""
                     WHERE cl.""UserId"" = @ClientId";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
