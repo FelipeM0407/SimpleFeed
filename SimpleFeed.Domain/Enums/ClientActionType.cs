@@ -11,7 +11,8 @@ namespace SimpleFeed.Domain.Enums
         ExcludeFeedback = 7,
         DuplicateForm = 8,
         EditStyleForm = 9,
-        ScheduledFormInativation = 10
+        ScheduledFormInativation = 10,
+        MigratePlan = 11
     }
 
 }

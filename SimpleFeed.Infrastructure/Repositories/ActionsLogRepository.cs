@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Domain.Enums;
 
 namespace SimpleFeed.Infrastructure.Repositories
 {
@@ -24,7 +25,7 @@ namespace SimpleFeed.Infrastructure.Repositories
             try
             {
                 var query = @"
-            SELECT cal.timestamp, at.display_name, at.description, cal.details
+            SELECT at.id, cal.timestamp, at.display_name, at.description, cal.details, at.code
             FROM client_action_logs cal
             INNER JOIN action_types at ON at.id = cal.action_id
             WHERE cal.client_id = @ClientId";
@@ -55,23 +56,27 @@ namespace SimpleFeed.Infrastructure.Repositories
                 if (filter.EndDate.HasValue)
                     command.Parameters.AddWithValue("@EndDate", filter.EndDate.Value);
 
-                using var reader = await command.ExecuteReaderAsync();
-
-                while (await reader.ReadAsync())
+                using (var reader = await command.ExecuteReaderAsync())
                 {
-                    var action = reader.GetString(1);
-                    var description = reader.GetString(2);
-                    var detailsRaw = reader.IsDBNull(3) ? null : reader.GetString(3);
-
-                    var obs = GerarObservacao(detailsRaw, action);
-
-                    result.Add(new ActionLogResultDto
+                    while (await reader.ReadAsync())
                     {
-                        Timestamp = reader.GetDateTime(0),
-                        Action = action,
-                        Description = description,
-                        Observations = obs
-                    });
+                        var actionEnum = (ClientActionType)reader.GetInt32(reader.GetOrdinal("id"));
+                        var timestamp = reader.GetDateTime(reader.GetOrdinal("timestamp"));
+                        var action = reader.GetString(reader.GetOrdinal("display_name"));
+                        var description = reader.GetString(reader.GetOrdinal("description"));
+                        var detailsRaw = reader.IsDBNull(reader.GetOrdinal("details")) ? null : reader.GetString(reader.GetOrdinal("details"));
+                        var actionCode = reader.GetString(reader.GetOrdinal("code"));
+
+                        var obs = GerarObservacao(detailsRaw, actionEnum);
+
+                        result.Add(new ActionLogResultDto
+                        {
+                            Timestamp = timestamp,
+                            Action = action,
+                            Description = description,
+                            Observations = obs
+                        });
+                    }
                 }
                 return result;
             }
@@ -79,69 +84,80 @@ namespace SimpleFeed.Infrastructure.Repositories
             {
                 throw new Exception("Erro ao buscar logs de ações.", ex);
             }
-
         }
 
-        private string GerarObservacao(string? detailsJson, string action)
+        private string GerarObservacao(string? detailsJson, ClientActionType actionEnum)
         {
             if (string.IsNullOrWhiteSpace(detailsJson))
+                return "Ação registrada";
+
+            JsonDocument doc;
+            try
             {
-                if (action.Contains("Estilo"))
-                    return "Estilo do formulário editado manualmente";
-                return "Configurações do formulário editadas manualmente";
+                doc = JsonDocument.Parse(detailsJson);
+            }
+            catch
+            {
+                return "Ação registrada";
             }
 
-            var doc = JsonDocument.Parse(detailsJson);
             var root = doc.RootElement;
 
-            return action switch
+            switch (actionEnum)
             {
-                "Criação de Formulário" =>
-                    root.TryGetProperty("form_name", out var formName)
-                        ? $"Formulário criado com o nome \"{formName.GetString()}\""
-                        : "Formulário criado",
+                case ClientActionType.CreateForm:
+                    return root.TryGetProperty("form_name", out var formName)
+                    ? $"Formulário criado com o nome \"{formName.GetString()}\""
+                    : "Formulário criado";
 
-                "Duplicação de Formulário" =>
-                    root.TryGetProperty("original_name_form", out var original) && root.TryGetProperty("new_form_name", out var novo)
-                        ? $"Formulário \"{original.GetString()}\" duplicado como \"{novo.GetString()}\""
-                        : "Formulário duplicado",
+                case ClientActionType.DuplicateForm:
+                    return root.TryGetProperty("original_name_form", out var original) && root.TryGetProperty("new_form_name", out var novo)
+                    ? $"Formulário \"{original.GetString()}\" duplicado como \"{novo.GetString()}\""
+                    : "Formulário duplicado";
 
-                "Exclusão de Feedback" =>
-                    root.TryGetProperty("deleted_count", out var count) && root.TryGetProperty("form_name", out var formName)
-                        ? $"{count.GetInt32()} feedbacks do formulário \"{formName.GetString()}\" excluídos manualmente"
-                        : "Feedbacks excluídos manualmente",
+                case ClientActionType.ExcludeFeedback:
+                    return root.TryGetProperty("deleted_count", out var count) && root.TryGetProperty("form_name", out var formName2)
+                    ? $"{count.GetInt32()} feedbacks do formulário \"{formName2.GetString()}\" excluídos manualmente"
+                    : "Feedbacks excluídos manualmente";
 
-                "Exclusão de Formulário" =>
-                    root.TryGetProperty("reason", out var reasonDelete) && root.TryGetProperty("form_name", out var formNameDelete)
-                        ? $"Formulário \"{formNameDelete.GetString()}\" excluído com motivo: {reasonDelete.GetString()}"
-                        : "Formulário excluído",
+                case ClientActionType.DeleteForm:
+                    return root.TryGetProperty("reason", out var reasonDelete) && root.TryGetProperty("form_name", out var formNameDelete)
+                    ? $"Formulário \"{formNameDelete.GetString()}\" excluído com motivo: {reasonDelete.GetString()}"
+                    : "Formulário excluído";
 
-                "Ativação de Formulário" =>
-                    root.TryGetProperty("activation_method", out var method) && root.TryGetProperty("form_name", out var formNameActive)
-                        ? $"Formulário \"{formNameActive.GetString()}\" ativado via {method.GetString()}"
-                        : "Formulário ativado",
+                case ClientActionType.ActivateForm:
+                    return root.TryGetProperty("activation_method", out var method) && root.TryGetProperty("form_name", out var formNameActive)
+                    ? $"Formulário \"{formNameActive.GetString()}\" ativado via {method.GetString()}"
+                    : "Formulário ativado";
 
-                "Inativação de Formulário" =>
-                    root.TryGetProperty("reason", out var reasonInactive) && root.TryGetProperty("form_name", out var formNameInact)
-                        ? $"Formulário \"{formNameInact.GetString()}\" inativado. Motivo: {reasonInactive.GetString()}"
-                        : "Formulário inativado",
-                "Inativação de Formulário Agendada" =>
-                    root.TryGetProperty("form_name", out var formNameScheduled)
-                        ? $"Formulário \"{formNameScheduled.GetString()}\" inativado por agendamento"
-                        : "Formulário inativado por agendamento",
+                case ClientActionType.InactivateForm:
+                    return root.TryGetProperty("reason", out var reasonInactive) && root.TryGetProperty("form_name", out var formNameInact)
+                    ? $"Formulário \"{formNameInact.GetString()}\" inativado. Motivo: {reasonInactive.GetString()}"
+                    : "Formulário inativado";
 
-                "Edição de Formulário" =>
-                    root.TryGetProperty("form_name", out var formNameEdit)
-                        ? $"Formulário \"{formNameEdit.GetString()}\" editado"
-                        : "Formulário editado",
+                case ClientActionType.ScheduledFormInativation:
+                    return root.TryGetProperty("form_name", out var formNameScheduled)
+                    ? $"Formulário \"{formNameScheduled.GetString()}\" inativado por agendamento"
+                    : "Formulário inativado por agendamento";
 
-                "Edição do Estilo do Formulário" =>
-                    root.TryGetProperty("form_name", out var formNameStyle)
-                        ? $"Estilo do formulário \"{formNameStyle.GetString()}\" editado"
-                        : "Estilo do formulário editado",
+                case ClientActionType.EditForm:
+                    return root.TryGetProperty("form_name", out var formNameEdit)
+                    ? $"Formulário \"{formNameEdit.GetString()}\" editado"
+                    : "Formulário editado";
 
-                _ => "Ação registrada"
-            };
+                case ClientActionType.EditStyleForm:
+                    return root.TryGetProperty("form_name", out var formNameStyle)
+                    ? $"Estilo do formulário \"{formNameStyle.GetString()}\" editado"
+                    : "Estilo do formulário editado";
+
+                case ClientActionType.MigratePlan:
+                    return root.TryGetProperty("previous_plan", out var previousPlan) && root.TryGetProperty("new_plan", out var newPlan)
+                    ? $"Plano migrado de \"{previousPlan.GetString()}\" para \"{newPlan.GetString()}\""
+                    : "Plano migrado";
+
+                default:
+                    return "Ação registrada";
+            }
         }
 
     }

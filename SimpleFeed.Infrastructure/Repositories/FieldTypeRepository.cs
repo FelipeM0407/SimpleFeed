@@ -24,7 +24,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var fieldTypes = new List<FieldTypeDto>();
 
                 var query = @"
-                    SELECT id, name, description, settings_schema, field_type, associated_plan
+                    SELECT id, name, description, settings_schema, field_type, plan_id
                     FROM field_types
                     ORDER BY id";
 
@@ -43,8 +43,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     Name = reader.GetString(reader.GetOrdinal("name")),
                                     Description = reader.GetString(reader.GetOrdinal("description")),
                                     FieldType = reader.GetString(reader.GetOrdinal("field_type")),
-                                    SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),
-                                    PlanId = reader.GetInt32(reader.GetOrdinal("associated_plan"))
+                                    PlanId = reader.GetInt32(reader.GetOrdinal("plan_id"))
                                 });
                             }
                         }
@@ -69,8 +68,9 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var query = @"
                     SELECT ft.id, ft.name, ft.label, ft.description, ft.settings_schema, ft.field_type, ft.plan_id
                     FROM clients cl
-                    INNER JOIN field_types ft ON ft.plan_id = cl.""PlanId""
+                    INNER JOIN field_types ft ON ft.plan_id <= cl.""PlanId""
                     WHERE cl.""UserId"" = @ClientId";
+
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -90,7 +90,6 @@ namespace SimpleFeed.Infrastructure.Repositories
                                     Label = reader.GetString(reader.GetOrdinal("label")),
                                     Description = reader.GetString(reader.GetOrdinal("description")),
                                     FieldType = reader.GetString(reader.GetOrdinal("field_type")),
-                                    SettingsSchema = reader.GetString(reader.GetOrdinal("settings_schema")),
                                     PlanId = reader.GetInt32(reader.GetOrdinal("plan_id"))
                                 });
                             }
