@@ -34,5 +34,20 @@ namespace SimpleFeed.Web.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpGet("{clientId}/services-available")]
+        public async Task<IActionResult> GetServicesAvailableByPlan(string clientId)
+        {
+            try
+            {
+                var result = await _plansService.GetServicesAvailableByPlanAsync(clientId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 }

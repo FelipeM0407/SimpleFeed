@@ -21,5 +21,11 @@ namespace SimpleFeed.Application.Services
         {
             return await _plansRepository.GetAllPlansAsync();
         }
+
+        public async Task<FormCreationStatusDto> GetServicesAvailableByPlanAsync(string clientGuid)
+        {
+            return await _plansRepository.GetServicesAvailableByPlanAsync(clientGuid);
+        }
+
     }
 }
