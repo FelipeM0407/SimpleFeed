@@ -9,5 +9,6 @@ namespace SimpleFeed.Application.Interfaces
     public interface IPlansRepository
     {
         Task<List<PlansDto>> GetAllPlansAsync();
+        Task<FormCreationStatusDto> GetServicesAvailableByPlanAsync(string clientGuid);
     }
 }

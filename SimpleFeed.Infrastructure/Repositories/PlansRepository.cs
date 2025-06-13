@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Npgsql;
 using SimpleFeed.Application.DTOs;
 using SimpleFeed.Application.Interfaces;
+using SimpleFeed.Domain.Entities.Enum;
 
 namespace SimpleFeed.Infrastructure.Repositories
 {
@@ -80,5 +81,63 @@ namespace SimpleFeed.Infrastructure.Repositories
 
             return new List<PlansDto>(plans.Values);
         }
+
+        public async Task<FormCreationStatusDto> GetServicesAvailableByPlanAsync(string clientGuid)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+            SELECT
+                p.id AS plan_id,
+                p.name AS plan_name,
+                COALESCE(p.max_forms, 0) AS max_forms,
+                COUNT(DISTINCT f.id) AS active_forms
+            FROM clients c
+            INNER JOIN plans p ON p.id = c.""PlanId""
+            LEFT JOIN forms f ON f.client_id = c.""Id""
+                AND (f.is_active = TRUE OR (f.is_active = FALSE AND f.updated_at >= DATE_TRUNC('month', CURRENT_DATE)))
+                AND f.created_at < DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month')
+            WHERE c.""UserId"" = @clientGuid
+            GROUP BY p.id, p.name, p.max_forms;
+        ";
+
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@clientGuid", clientGuid);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var total = reader.GetInt32(reader.GetOrdinal("active_forms"));
+                    var limite = reader.GetInt32(reader.GetOrdinal("max_forms"));
+                    var planoNome = reader.GetString(reader.GetOrdinal("plan_name"));
+                    var planoId = reader.GetInt32(reader.GetOrdinal("plan_id"));
+
+                    // Se o plano for Free, não pode criar formulário
+                    bool podeExceder = planoId == (int)Plans.Free ? false : true;
+                    bool cobrancaExtra = limite > 0 && total >= limite;
+
+                    return new FormCreationStatusDto
+                    {
+                        PlanoId = planoId,
+                        PlanoNome = planoNome,
+                        LimiteFormularios = limite,
+                        TotalFormulariosAtivos = total,
+                        PodeExcederFormulario = podeExceder,
+                        CriacaoGeraraCobranca = cobrancaExtra
+                    };
+                }
+
+                throw new Exception("Cliente não encontrado ou sem plano.");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao buscar status de criação de formulário.", ex);
+            }
+        }
+
     }
 }
