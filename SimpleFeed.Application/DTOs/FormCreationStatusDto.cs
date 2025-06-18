@@ -9,7 +9,7 @@ namespace SimpleFeed.Application.DTOs
     {
         public string PlanoNome { get; set; }
         public int PlanoId { get; set; }
-        public int TotalFormulariosAtivos { get; set; }
+        public int TotalFormulariosAtivosMes { get; set; }
         public int LimiteFormularios { get; set; }
         public bool PodeExcederFormulario { get; set; }
         public bool CriacaoGeraraCobranca { get; set; }

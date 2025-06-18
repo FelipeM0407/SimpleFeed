@@ -125,7 +125,7 @@ namespace SimpleFeed.Infrastructure.Repositories
                         PlanoId = planoId,
                         PlanoNome = planoNome,
                         LimiteFormularios = limite,
-                        TotalFormulariosAtivos = total,
+                        TotalFormulariosAtivosMes = total,
                         PodeExcederFormulario = podeExceder,
                         CriacaoGeraraCobranca = cobrancaExtra
                     };
@@ -136,6 +136,92 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 throw new Exception("Erro ao buscar status de criação de formulário.", ex);
+            }
+        }
+
+        public async Task<FormCreationStatusDto> GetFormReactivationStatus(int formId)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+            WITH form_info AS (
+                SELECT 
+                    f.id,
+                    f.client_id,
+                    f.created_at,
+                    f.updated_at
+                FROM forms f
+                WHERE f.id = @formId AND f.is_active = FALSE
+                LIMIT 1
+            ), plan_info AS (
+                SELECT 
+                    c.""PlanId"" AS plan_id,
+                    p.name AS plan_name,
+                    COALESCE(p.max_forms, 0) AS max_forms,
+                    c.""Id"" AS client_id
+                FROM clients c
+                INNER JOIN plans p ON p.id = c.""PlanId""
+                INNER JOIN form_info fi ON fi.client_id = c.""Id""
+            ), forms_ativos_mes_atual AS (
+                SELECT COUNT(*) AS total
+                FROM forms f
+                INNER JOIN form_info fi ON fi.client_id = f.client_id
+                WHERE 
+                    (f.is_active = TRUE OR (f.is_active = FALSE AND f.updated_at >= DATE_TRUNC('month', CURRENT_DATE)))
+                    AND f.created_at < DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month')
+            )
+            SELECT 
+                pi.plan_id,
+                pi.plan_name,
+                pi.max_forms,
+                fam.total AS active_forms,
+                (
+                    SELECT 
+                        CASE 
+                            WHEN fi.created_at >= DATE_TRUNC('month', CURRENT_DATE) 
+                                 OR fi.updated_at >= DATE_TRUNC('month', CURRENT_DATE)
+                            THEN TRUE ELSE FALSE
+                        END
+                    FROM form_info fi
+                ) AS foi_cobrado_mes_atual
+            FROM plan_info pi, forms_ativos_mes_atual fam;
+        ";
+
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@formId", formId);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var planoId = reader.GetInt32(reader.GetOrdinal("plan_id"));
+                    var planoNome = reader.GetString(reader.GetOrdinal("plan_name"));
+                    var limite = reader.GetInt32(reader.GetOrdinal("max_forms"));
+                    var total = reader.GetInt32(reader.GetOrdinal("active_forms"));
+                    var foiCobradoMesAtual = reader.GetBoolean(reader.GetOrdinal("foi_cobrado_mes_atual"));
+
+                    bool podeExceder = planoId != (int)Plans.Free;
+                    bool cobrancaExtra = !foiCobradoMesAtual && limite > 0 && (total + 1) > limite;
+
+                    return new FormCreationStatusDto
+                    {
+                        PlanoId = planoId,
+                        PlanoNome = planoNome,
+                        LimiteFormularios = limite,
+                        TotalFormulariosAtivosMes = total,
+                        PodeExcederFormulario = podeExceder,
+                        CriacaoGeraraCobranca = cobrancaExtra
+                    };
+                }
+
+                throw new Exception("Formulário não encontrado ou já está ativo.");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao verificar status de reativação do formulário.", ex);
             }
         }
 

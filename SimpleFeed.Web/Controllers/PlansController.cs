@@ -49,5 +49,20 @@ namespace SimpleFeed.Web.Controllers
             }
         }
 
+        [HttpGet("{formId}/reactivation-status")]
+        public async Task<IActionResult> GetFormReactivationStatus(int formId)
+        {
+            try
+            {
+                var result = await _plansService.GetFormReactivationStatusAsync(formId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+
     }
 }

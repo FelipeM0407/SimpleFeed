@@ -10,5 +10,6 @@ namespace SimpleFeed.Application.Interfaces
     {
         Task<List<PlansDto>> GetAllPlansAsync();
         Task<FormCreationStatusDto> GetServicesAvailableByPlanAsync(string clientGuid);
+        Task<FormCreationStatusDto> GetFormReactivationStatus(int formId);
     }
 }
