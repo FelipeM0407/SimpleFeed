@@ -155,6 +155,11 @@ namespace SimpleFeed.Infrastructure.Repositories
                     ? $"Plano migrado de \"{previousPlan.GetString()}\" para \"{newPlan.GetString()}\""
                     : "Plano migrado";
 
+                case ClientActionType.EditQrCode:
+                    return root.TryGetProperty("form_name", out var formNameQrCode)
+                    ? $"QR Code do formulário \"{formNameQrCode.GetString()}\" editado"
+                    : "QR Code do formulário editado";
+
                 default:
                     return "Ação registrada";
             }

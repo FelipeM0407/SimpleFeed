@@ -12,7 +12,8 @@ namespace SimpleFeed.Domain.Enums
         DuplicateForm = 8,
         EditStyleForm = 9,
         ScheduledFormInativation = 10,
-        MigratePlan = 11
+        MigratePlan = 11,
+        EditQrCode = 12,
     }
 
 }

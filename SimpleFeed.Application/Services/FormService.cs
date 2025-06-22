@@ -95,5 +95,14 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.ActivateFormAsync(formId);
         }
 
+        public async Task<FormQRCodeDto> GetQrCodeLogoBase64ByFormIdAsync(int formId)
+        {
+            return await _formRepository.GetQrCodeLogoBase64ByFormIdAsync(formId);
+        }
+
+        public async Task<bool> SaveQrCodeSettingsAsync(int formId, string? color, string? qrCodeLogoBase64)
+        {
+            return await _formRepository.SaveQrCodeSettingsAsync(formId, color, qrCodeLogoBase64);
+        }
     }
 }
