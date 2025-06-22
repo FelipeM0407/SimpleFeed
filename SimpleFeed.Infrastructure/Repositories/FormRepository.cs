@@ -59,10 +59,10 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
-            var forms = new List<FormDashboardDto>();
+                var forms = new List<FormDashboardDto>();
 
-            // Inicia a query base
-            var query = @"
+                // Inicia a query base
+                var query = @"
         SELECT 
             f.id AS Id, 
             f.name AS Name, 
@@ -77,71 +77,71 @@ namespace SimpleFeed.Infrastructure.Repositories
         LEFT JOIN feedbacks fe ON fe.form_id = f.id
         WHERE f.client_id = @ClientId";
 
-            // Condição para "Ativo" ou "Inativo"
-            if (statusFormDto.isActive)
-            {
-                query += " AND f.is_active = @IsActive";
-            }
-            else if (statusFormDto.isInativo)
-            {
-                query += " AND f.is_active = @IsInativo";
-            }
-
-            // Condição para "Não Lido"
-            if (statusFormDto.isNaoLido)
-            {
-                query += " AND fe.is_new = true";
-            }
-
-            // Finaliza a query
-            query += @"
-        GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.inativation_date
-        ORDER BY f.created_at DESC;";
-
-            // Executa a query no banco
-            using (var connection = new NpgsqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                command.Parameters.AddWithValue("@ClientId", clientId);
-
-                // Parâmetros para Ativo e Inativo
+                // Condição para "Ativo" ou "Inativo"
                 if (statusFormDto.isActive)
                 {
-                    command.Parameters.AddWithValue("@IsActive", true);
+                    query += " AND f.is_active = @IsActive";
                 }
                 else if (statusFormDto.isInativo)
                 {
-                    command.Parameters.AddWithValue("@IsInativo", false);
+                    query += " AND f.is_active = @IsInativo";
                 }
 
-                using (var reader = await command.ExecuteReaderAsync())
+                // Condição para "Não Lido"
+                if (statusFormDto.isNaoLido)
                 {
-                    while (await reader.ReadAsync())
+                    query += " AND fe.is_new = true";
+                }
+
+                // Finaliza a query
+                query += @"
+        GROUP BY f.id, f.name, f.updated_at, f.created_at, fse.inativation_date
+        ORDER BY f.created_at DESC;";
+
+                // Executa a query no banco
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
                     {
-                    forms.Add(new FormDashboardDto
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        Name = reader["Name"].ToString(),
-                        ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
-                        NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
-                        Status = reader.GetBoolean(reader.GetOrdinal("Status")),
-                        LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
-                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
-                        InativationDate = reader.IsDBNull(reader.GetOrdinal("InativationDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("InativationDate"))
-                    });
+                        command.Parameters.AddWithValue("@ClientId", clientId);
+
+                        // Parâmetros para Ativo e Inativo
+                        if (statusFormDto.isActive)
+                        {
+                            command.Parameters.AddWithValue("@IsActive", true);
+                        }
+                        else if (statusFormDto.isInativo)
+                        {
+                            command.Parameters.AddWithValue("@IsInativo", false);
+                        }
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                forms.Add(new FormDashboardDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                    Name = reader["Name"].ToString(),
+                                    ResponseCount = reader.GetInt32(reader.GetOrdinal("ResponseCount")),
+                                    NewFeedbackCount = reader.GetInt32(reader.GetOrdinal("NewFeedbackCount")),
+                                    Status = reader.GetBoolean(reader.GetOrdinal("Status")),
+                                    LastUpdated = reader.GetDateTime(reader.GetOrdinal("LastUpdated")),
+                                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                                    InativationDate = reader.IsDBNull(reader.GetOrdinal("InativationDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("InativationDate"))
+                                });
+                            }
+                        }
                     }
                 }
-                }
-            }
 
-            return forms;
+                return forms;
             }
             catch (Exception ex)
             {
-            // Log the exception or handle it as needed
-            throw new Exception("Ocorreu um erro ao recuperar formulários ativos com respostas.", ex);
+                // Log the exception or handle it as needed
+                throw new Exception("Ocorreu um erro ao recuperar formulários ativos com respostas.", ex);
             }
         }
 
@@ -168,6 +168,14 @@ namespace SimpleFeed.Infrastructure.Repositories
                 var insertStyleQuery = @"
             INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
             VALUES (@NewFormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
+
+                var insertQrCodeQuery = @"
+            INSERT INTO form_qrcode (form_id, qrcode_logo_base64, color)
+            VALUES (@NewFormId, @QrCodeLogo, @Color);";
+
+                var insertLogoQuery = @"
+            INSERT INTO form_logo (form_id, logo_base64, created_at, updated_at)
+            VALUES (@NewFormId, @LogoBase64, NOW(), NOW())";
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -243,6 +251,27 @@ namespace SimpleFeed.Infrastructure.Repositories
                                 insertStyleCommand.Parameters.AddWithValue("@FontFamily", (object?)fontFamily ?? DBNull.Value);
                                 insertStyleCommand.Parameters.AddWithValue("@FontSize", (object?)fontSize ?? DBNull.Value);
                                 await insertStyleCommand.ExecuteNonQueryAsync();
+                            }
+
+                            // Duplicar QR Code, se existir
+                            var qrCodeLogoBase64 = await GetQrCodeLogoBase64ByFormIdAsync(formId);
+                            if (qrCodeLogoBase64 != null)
+                            {
+                                using var insertQrCodeCommand = new NpgsqlCommand(insertQrCodeQuery, connection, transaction);
+                                insertQrCodeCommand.Parameters.AddWithValue("@NewFormId", newFormId);
+                                insertQrCodeCommand.Parameters.AddWithValue("@QrCodeLogo", qrCodeLogoBase64.QrCodeLogoBase64 ?? (object)DBNull.Value);
+                                insertQrCodeCommand.Parameters.AddWithValue("@Color", qrCodeLogoBase64.Color ?? (object)DBNull.Value);
+                                await insertQrCodeCommand.ExecuteNonQueryAsync();
+                            }
+
+                            // Duplicar logo, se existir
+                            var logoBase64 = await GetLogoBase64ByFormIdAsync(formId);
+                            if (logoBase64 != null)
+                            {
+                                using var insertLogoCommand = new NpgsqlCommand(insertLogoQuery, connection, transaction);
+                                insertLogoCommand.Parameters.AddWithValue("@NewFormId", newFormId);
+                                insertLogoCommand.Parameters.AddWithValue("@LogoBase64", logoBase64 ?? (object)DBNull.Value);
+                                await insertLogoCommand.ExecuteNonQueryAsync();
                             }
 
                             // Log da duplicação
@@ -1036,6 +1065,119 @@ namespace SimpleFeed.Infrastructure.Repositories
             catch (Exception ex)
             {
                 throw new Exception("Ocorreu um erro ao ativar o formulário.", ex);
+            }
+        }
+
+        public async Task<FormQRCodeDto> GetQrCodeLogoBase64ByFormIdAsync(int formId)
+        {
+            try
+            {
+                var query = @"
+            SELECT id, form_id, color, qrcode_logo_base64
+            FROM form_qrcode
+            WHERE form_id = @FormId";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FormId", formId);
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                return new FormQRCodeDto
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                    FormId = reader.GetInt32(reader.GetOrdinal("form_id")),
+                                    Color = reader.IsDBNull(reader.GetOrdinal("color")) ? null : reader.GetString(reader.GetOrdinal("color")),
+                                    QrCodeLogoBase64 = reader.IsDBNull(reader.GetOrdinal("qrcode_logo_base64")) ? null : reader.GetString(reader.GetOrdinal("qrcode_logo_base64"))
+                                };
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ocorreu um erro ao recuperar o logo do qr code pelo ID do formulário.", ex);
+            }
+        }
+
+        public async Task<bool> SaveQrCodeSettingsAsync(int formId, string? color, string? qrCodeLogoBase64)
+        {
+            try
+            {
+                var query = @"
+                INSERT INTO form_qrcode (form_id, color, qrcode_logo_base64, updatedat)
+                VALUES (@FormId, @Color, @QrCodeLogoBase64, NOW())
+                ON CONFLICT (form_id)
+                DO UPDATE SET
+                    color = EXCLUDED.color,
+                    qrcode_logo_base64 = EXCLUDED.qrcode_logo_base64,
+                    updatedat = NOW();";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var transaction = await connection.BeginTransactionAsync())
+                    {
+                        try
+                        {
+                            using (var command = new NpgsqlCommand(query, connection, transaction))
+                            {
+                                command.Parameters.AddWithValue("@Color", (object?)color ?? DBNull.Value);
+                                command.Parameters.AddWithValue("@QrCodeLogoBase64", (object?)qrCodeLogoBase64 ?? DBNull.Value);
+                                command.Parameters.AddWithValue("@FormId", formId);
+
+                                var rows = await command.ExecuteNonQueryAsync();
+                                if (rows > 0)
+                                {
+                                    // Recupera clientId para log
+                                    var getClientQuery = "SELECT client_id, name FROM forms WHERE id = @FormId";
+                                    int clientId;
+                                    string formName;
+                                    using (var getClientCmd = new NpgsqlCommand(getClientQuery, connection, transaction))
+                                    {
+                                        getClientCmd.Parameters.AddWithValue("@FormId", formId);
+                                        using (var reader = await getClientCmd.ExecuteReaderAsync())
+                                        {
+                                            if (!await reader.ReadAsync())
+                                                throw new Exception("Formulário não encontrado.");
+                                            clientId = reader.GetInt32(reader.GetOrdinal("client_id"));
+                                            formName = reader.GetString(reader.GetOrdinal("name"));
+                                        }
+                                    }
+
+                                    await LogClientActionAsync(connection, transaction, clientId, formId, ClientActionType.EditQrCode, new
+                                    {
+                                        form_id = formId,
+                                        form_name = formName
+                                    });
+
+                                    await transaction.CommitAsync();
+                                    return true;
+                                }
+                                else
+                                {
+                                    await transaction.RollbackAsync();
+                                    return false;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            throw new Exception("Ocorreu um erro ao salvar as configurações do QR Code.", ex);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ocorreu um erro ao salvar as configurações do QR Code.", ex);
             }
         }
     }

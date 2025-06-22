@@ -161,5 +161,19 @@ namespace SimpleFeed.Web.Controllers
                 return BadRequest(new { Message = "Failed to activate the form." });
             }
         }
+
+        [HttpGet("{formId}/qrcode-settings")]
+        public async Task<IActionResult> GetQrCodeLogoBase64ByFormId(int formId)
+        {
+            var qrCodeSettings = await _formService.GetQrCodeLogoBase64ByFormIdAsync(formId);
+            return Ok(qrCodeSettings);
+        }
+
+        [HttpPost("save-qrcode-settings")]
+        public async Task<IActionResult> SaveQrCodeSettings([FromBody] FormQRCodeDto dto)
+        {
+            var result = await _formService.SaveQrCodeSettingsAsync(dto.FormId, dto.Color, dto.QrCodeLogoBase64);
+            return Ok(result);
+        }
     }
 }

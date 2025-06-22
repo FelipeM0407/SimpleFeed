@@ -18,10 +18,11 @@ namespace SimpleFeed.Application.Interfaces
         Task<bool> ValidateExistenceFeedbacks(int formId);
         Task<bool> SaveFormEditsAsync(EditFormDto editFormDto);
         Task<string> GetLogoBase64ByFormIdAsync(int formId);
-        Task<FormSettingsDto> GetSettingsByFormIdAsync(int formId);    
+        Task<FormSettingsDto> GetSettingsByFormIdAsync(int formId);
         Task<int> GetAllActiveFormsCountAsync(int clientId);
         Task<bool> InactivateFormAsync(int formId);
         Task<bool> ActivateFormAsync(int formId);
-
+        Task<FormQRCodeDto> GetQrCodeLogoBase64ByFormIdAsync(int formId);
+        Task<bool> SaveQrCodeSettingsAsync(int formId, string? color, string? qrCodeLogoBase64);
     }
 }
