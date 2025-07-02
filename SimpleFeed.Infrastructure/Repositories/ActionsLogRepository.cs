@@ -160,6 +160,11 @@ namespace SimpleFeed.Infrastructure.Repositories
                     ? $"QR Code do formulário \"{formNameQrCode.GetString()}\" editado"
                     : "QR Code do formulário editado";
 
+                case ClientActionType.AiAnalysis:
+                    return root.TryGetProperty("form_name", out var formNameAi)
+                    ? $"Análise IA do formulário \"{formNameAi.GetString()}\" realizada"
+                    : "Análise IA realizada";
+
                 default:
                     return "Ação registrada";
             }
