@@ -7,6 +7,7 @@ using SimpleFeed.Application.Services;
 using SimpleFeed.Domain.Entities;
 using SimpleFeed.Infrastructure.Persistence;
 using SimpleFeed.Infrastructure.Repositories;
+using SimpleFeed.Web.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +36,10 @@ else
         Environment.GetEnvironmentVariable("CONNECTION_STRING_PROD"));
 }
 
-
+builder.Services.Configure<OpenAiSettings>(options =>
+{
+    options.ApiKey = Environment.GetEnvironmentVariable("API_KEY_OPEN_AI");
+});
 // Configurar o Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -120,6 +124,7 @@ builder.Services.AddScoped<IFormStyleRepository, FormStyleRepository>();
 builder.Services.AddScoped<IActionsLogRepository, ActionsLogRepository>();
 builder.Services.AddScoped<IBillingSummaryRepository, BillingSummaryRepository>();
 builder.Services.AddScoped<IPlansRepository, PlansRepository>();
+builder.Services.AddScoped<IReportsRepository, ReportsRepository>();
 
 
 
@@ -135,6 +140,7 @@ builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ActionsLogService>();
 builder.Services.AddScoped<BillingSummaryService>();
 builder.Services.AddScoped<PlansService>();
+builder.Services.AddHttpClient<ReportsService>();
 
 builder.Services.AddControllers();
 
