@@ -177,5 +177,10 @@ namespace SimpleFeed.Application.Services
         {
             return await _reportsRepository.GetReportByIdAsync(reportId);
         }
+
+        public async Task<IAReportCreationStatusDto> GetServicesAvailableByPlanAsync(string clientId)
+        {
+            return await _reportsRepository.GetServicesAvailableByPlanAsync(clientId);
+        }
     }
 }

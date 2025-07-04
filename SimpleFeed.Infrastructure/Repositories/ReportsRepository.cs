@@ -239,6 +239,63 @@ namespace SimpleFeed.Infrastructure.Repositories
             }
         }
 
+
+        public async Task<IAReportCreationStatusDto> GetServicesAvailableByPlanAsync(string clientGuid)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+                SELECT
+                p.id AS plan_id,
+                p.name AS plan_name,
+                COALESCE((p.ai_reports_per_form * p.max_forms), 0) AS ai_reports_per_form,
+                COALESCE(SUM(CASE WHEN ar.created_at >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE 0 END), 0) AS total_ai_reports_month
+                FROM clients c
+                INNER JOIN plans p ON p.id = c.""PlanId""
+                LEFT JOIN ai_reports ar ON ar.client_id = c.""Id""
+                AND ar.created_at >= DATE_TRUNC('month', CURRENT_DATE)
+                AND ar.created_at < DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month')
+                WHERE c.""UserId"" = @clientGuid
+                GROUP BY p.id, p.name, p.ai_reports_per_form;
+            ";
+
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("@clientGuid", clientGuid);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var planoId = reader.GetInt32(reader.GetOrdinal("plan_id"));
+                    var planoNome = reader.GetString(reader.GetOrdinal("plan_name"));
+                    var limiteRelatorios = reader.GetInt32(reader.GetOrdinal("ai_reports_per_form"));
+                    var totalRelatoriosMes = reader.GetInt32(reader.GetOrdinal("total_ai_reports_month"));
+
+                    // Se o plano for Free, não pode exceder
+                    bool podeExceder = planoId == 1 ? false : true;
+                    bool cobrancaExtra = limiteRelatorios > 0 && totalRelatoriosMes >= limiteRelatorios;
+
+                    return new IAReportCreationStatusDto
+                    {
+                        PlanoId = planoId,
+                        PlanoNome = planoNome,
+                        LimiteRelatoriosIAMes = limiteRelatorios,
+                        TotalRelatoriosIAMes = totalRelatoriosMes,
+                        PodeExcederRelatorios = podeExceder,
+                        CriacaoGeraraCobranca = cobrancaExtra
+                    };
+                }
+
+                throw new Exception("Cliente não encontrado ou sem plano.");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao buscar status de criação de relatório IA.", ex);
+            }
+        }
     }
 
 }

@@ -163,6 +163,7 @@ namespace SimpleFeed.Web.Controllers
                 new Claim("name", user.FirstName),
                 new Claim("id", user.Id),
                 new Claim("client_id", client?.Id.ToString() ?? "0"),
+                new Claim("plan_id", client?.PlanId.ToString() ?? "0")
             };
 
 
