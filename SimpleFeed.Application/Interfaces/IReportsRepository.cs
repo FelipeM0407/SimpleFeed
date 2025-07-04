@@ -25,5 +25,6 @@ namespace SimpleFeed.Application.Interfaces
 
         Task<DetailReportIA> GetReportByIdAsync(int reportId);
 
+        Task<IAReportCreationStatusDto> GetServicesAvailableByPlanAsync(string clientId);
     }
 }

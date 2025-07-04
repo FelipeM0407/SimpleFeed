@@ -68,5 +68,19 @@ namespace SimpleFeed.Web.Controllers
 
             return Ok(report);
         }
+
+        [HttpGet("{clientId}/services-available-ia-reports")]
+        public async Task<IActionResult> GetServicesAvailableByPlan(string clientId)
+        {
+            try
+            {
+                var result = await _reportsService.GetServicesAvailableByPlanAsync(clientId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }
