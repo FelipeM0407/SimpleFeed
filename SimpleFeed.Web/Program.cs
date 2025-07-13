@@ -84,7 +84,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", builder =>
     {
         builder.WithOrigins(
-          "https://www.app.simplefeed.com.br",
+          "https://app.simplefeed.com.br",
           "http://localhost:4200",
           "https://simple-feed-front-git-develop-felipes-projects-b3f64dcf.vercel.app"
         )
