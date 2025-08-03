@@ -8,6 +8,7 @@ namespace SimpleFeed.Application.DTOs
 {
     public class CreateFormDto
     {
+        public int QrCodeId { get; set; } // Essa propriedade é opcional e pode ser usada para associar o formulário a um QR Code existente.
         public string Name { get; set; }
         public int Client_Id { get; set; }
         public bool Is_Active { get; set; }

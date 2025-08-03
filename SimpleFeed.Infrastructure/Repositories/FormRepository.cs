@@ -147,159 +147,79 @@ namespace SimpleFeed.Infrastructure.Repositories
 
 
 
-        public async Task<bool> DuplicateFormAsync(int formId, string formName)
+        public async Task<int> DuplicateFormAsync(int formId, string formName, int? qrCodeId = null)
         {
+            using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            using var transaction = await connection.BeginTransactionAsync();
+
             try
             {
-                var getFormQuery = "SELECT name, client_id, template_id, is_active FROM forms WHERE id = @FormId";
-                var insertFormQuery = @"
-            INSERT INTO forms (name, client_id, template_id, is_active, created_at, updated_at)
-            VALUES (@Name, @ClientId, @TemplateId, @IsActive, NOW(), NOW())
-            RETURNING id;";
-                var duplicateFieldsQuery = @"
-            INSERT INTO form_fields (form_id, name, type, label, required, ordenation, options, field_type_id)
-            SELECT @NewFormId, name, type, label, required, ordenation, options, field_type_id
-            FROM form_fields
-            WHERE form_id = @OriginalFormId;";
-                var getStyleQuery = @"
-            SELECT color, color_button, color_text_button, background_color, font_color, font_family, font_size
-            FROM form_style
-            WHERE form_id = @FormId;";
-                var insertStyleQuery = @"
-            INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
-            VALUES (@NewFormId, @Color, @ColorButton, @ColorTextButton, @BackgroundColor, @FontColor, @FontFamily, @FontSize, NOW(), NOW());";
+                // 1. Copiar os dados do formulário original
+                var insertFormQuery = qrCodeId > 0
+                                    ? @"INSERT INTO forms (id, client_id, name, is_active, template_id, created_at)
+               SELECT @NewId, client_id, @FormName, is_active, template_id, NOW()
+               FROM forms WHERE id = @FormId RETURNING id;"
+                                    : @"INSERT INTO forms (client_id, name, is_active, template_id, created_at)
+               SELECT client_id, @FormName, is_active, template_id, NOW()
+               FROM forms WHERE id = @FormId RETURNING id;";
 
-                var insertQrCodeQuery = @"
-            INSERT INTO form_qrcode (form_id, qrcode_logo_base64, color)
-            VALUES (@NewFormId, @QrCodeLogo, @Color);";
-
-                var insertLogoQuery = @"
-            INSERT INTO form_logo (form_id, logo_base64, created_at, updated_at)
-            VALUES (@NewFormId, @LogoBase64, NOW(), NOW())";
-
-                using (var connection = new NpgsqlConnection(_connectionString))
+                int newFormId;
+                using (var cmd = new NpgsqlCommand(insertFormQuery, connection, transaction))
                 {
-                    await connection.OpenAsync();
-                    using (var transaction = await connection.BeginTransactionAsync())
+                    if (qrCodeId > 0)
+                        cmd.Parameters.AddWithValue("@NewId", qrCodeId.Value);
+
+                    cmd.Parameters.AddWithValue("@FormId", formId);
+                    cmd.Parameters.AddWithValue("@FormName", formName);
+                    newFormId = (int)await cmd.ExecuteScalarAsync();
+                }
+
+                // 2. Copiar os campos
+                var copyFieldsQuery = @"
+            INSERT INTO form_fields (form_id, name, label, type, required, ordenation, options, field_type_id)
+            SELECT @NewFormId, name, label, type, required, ordenation, options, field_type_id
+            FROM form_fields WHERE form_id = @FormId;";
+                using (var cmd = new NpgsqlCommand(copyFieldsQuery, connection, transaction))
+                {
+                    cmd.Parameters.AddWithValue("@NewFormId", newFormId);
+                    cmd.Parameters.AddWithValue("@FormId", formId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 3. Copiar estilo se existir
+                var copyStyleQuery = @"
+            INSERT INTO form_style (form_id, color, color_button, color_text_button, background_color, font_color, font_family, font_size, created_at, updated_at)
+            SELECT @NewFormId, color, color_button, color_text_button, background_color, font_color, font_family, font_size, NOW(), NOW()
+            FROM form_style WHERE form_id = @FormId;";
+                using (var cmd = new NpgsqlCommand(copyStyleQuery, connection, transaction))
+                {
+                    cmd.Parameters.AddWithValue("@NewFormId", newFormId);
+                    cmd.Parameters.AddWithValue("@FormId", formId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 4. Atualizar QR Code como usado
+                if (qrCodeId.HasValue)
+                {
+                    var updateQrCodeQuery = "UPDATE qr_code_impressos SET usado = true WHERE id = @QrCodeId;";
+                    using (var cmd = new NpgsqlCommand(updateQrCodeQuery, connection, transaction))
                     {
-                        try
-                        {
-                            string originalName;
-                            int clientId, templateId;
-                            string? color = null, colorButton = null, colorTextButton = null, backgroundColor = null, fontColor = null, fontFamily = null;
-                            int? fontSize = null;
-
-                            // Buscar dados do formulário original
-                            using var getFormCommand = new NpgsqlCommand(getFormQuery, connection, transaction);
-                            getFormCommand.Parameters.AddWithValue("@FormId", formId);
-
-                            using var reader = await getFormCommand.ExecuteReaderAsync();
-                            if (!await reader.ReadAsync())
-                                throw new Exception("Formulário não encontrado.");
-
-                            originalName = reader.GetString(0);
-                            clientId = reader.GetInt32(1);
-                            templateId = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
-                            var isActive = reader.GetBoolean(3);
-                            reader.Close();
-
-                            // Inserir novo formulário
-                            int newFormId;
-                            using (var insertFormCommand = new NpgsqlCommand(insertFormQuery, connection, transaction))
-                            {
-                                insertFormCommand.Parameters.AddWithValue("@Name", formName);
-                                insertFormCommand.Parameters.AddWithValue("@ClientId", clientId);
-                                insertFormCommand.Parameters.AddWithValue("@TemplateId", templateId == 0 ? DBNull.Value : templateId);
-                                insertFormCommand.Parameters.AddWithValue("@IsActive", isActive);
-                                newFormId = (int)await insertFormCommand.ExecuteScalarAsync();
-                            }
-
-                            // Duplicar campos
-                            using (var duplicateFieldsCommand = new NpgsqlCommand(duplicateFieldsQuery, connection, transaction))
-                            {
-                                duplicateFieldsCommand.Parameters.AddWithValue("@NewFormId", newFormId);
-                                duplicateFieldsCommand.Parameters.AddWithValue("@OriginalFormId", formId);
-                                await duplicateFieldsCommand.ExecuteNonQueryAsync();
-                            }
-
-                            // Estilo
-                            using (var getStyleCommand = new NpgsqlCommand(getStyleQuery, connection, transaction))
-                            {
-                                getStyleCommand.Parameters.AddWithValue("@FormId", formId);
-                                using var styleReader = await getStyleCommand.ExecuteReaderAsync();
-                                if (await styleReader.ReadAsync())
-                                {
-                                    color = styleReader["color"]?.ToString();
-                                    colorButton = styleReader["color_button"]?.ToString();
-                                    colorTextButton = styleReader["color_text_button"]?.ToString();
-                                    backgroundColor = styleReader["background_color"]?.ToString();
-                                    fontColor = styleReader["font_color"]?.ToString();
-                                    fontFamily = styleReader["font_family"]?.ToString();
-                                    fontSize = styleReader.IsDBNull(styleReader.GetOrdinal("font_size")) ? null : styleReader.GetInt32(styleReader.GetOrdinal("font_size"));
-                                }
-                            }
-
-                            if (color != null || colorButton != null || backgroundColor != null)
-                            {
-                                using var insertStyleCommand = new NpgsqlCommand(insertStyleQuery, connection, transaction);
-                                insertStyleCommand.Parameters.AddWithValue("@NewFormId", newFormId);
-                                insertStyleCommand.Parameters.AddWithValue("@Color", (object?)color ?? DBNull.Value);
-                                insertStyleCommand.Parameters.AddWithValue("@ColorButton", (object?)colorButton ?? DBNull.Value);
-                                insertStyleCommand.Parameters.AddWithValue("@ColorTextButton", (object?)colorTextButton ?? DBNull.Value);
-                                insertStyleCommand.Parameters.AddWithValue("@BackgroundColor", (object?)backgroundColor ?? DBNull.Value);
-                                insertStyleCommand.Parameters.AddWithValue("@FontColor", (object?)fontColor ?? DBNull.Value);
-                                insertStyleCommand.Parameters.AddWithValue("@FontFamily", (object?)fontFamily ?? DBNull.Value);
-                                insertStyleCommand.Parameters.AddWithValue("@FontSize", (object?)fontSize ?? DBNull.Value);
-                                await insertStyleCommand.ExecuteNonQueryAsync();
-                            }
-
-                            // Duplicar QR Code, se existir
-                            var qrCodeLogoBase64 = await GetQrCodeLogoBase64ByFormIdAsync(formId);
-                            if (qrCodeLogoBase64 != null)
-                            {
-                                using var insertQrCodeCommand = new NpgsqlCommand(insertQrCodeQuery, connection, transaction);
-                                insertQrCodeCommand.Parameters.AddWithValue("@NewFormId", newFormId);
-                                insertQrCodeCommand.Parameters.AddWithValue("@QrCodeLogo", qrCodeLogoBase64.QrCodeLogoBase64 ?? (object)DBNull.Value);
-                                insertQrCodeCommand.Parameters.AddWithValue("@Color", qrCodeLogoBase64.Color ?? (object)DBNull.Value);
-                                await insertQrCodeCommand.ExecuteNonQueryAsync();
-                            }
-
-                            // Duplicar logo, se existir
-                            var logoBase64 = await GetLogoBase64ByFormIdAsync(formId);
-                            if (logoBase64 != null)
-                            {
-                                using var insertLogoCommand = new NpgsqlCommand(insertLogoQuery, connection, transaction);
-                                insertLogoCommand.Parameters.AddWithValue("@NewFormId", newFormId);
-                                insertLogoCommand.Parameters.AddWithValue("@LogoBase64", logoBase64 ?? (object)DBNull.Value);
-                                await insertLogoCommand.ExecuteNonQueryAsync();
-                            }
-
-                            // Log da duplicação
-                            await LogClientActionAsync(connection, transaction, clientId, newFormId, ClientActionType.DuplicateForm, new
-                            {
-                                original_id = formId,
-                                original_name_form = originalName,
-                                new_form_name = formName,
-                                template_id = templateId
-                            });
-
-                            await transaction.CommitAsync();
-                            return true;
-                        }
-                        catch (Exception e)
-                        {
-                            await transaction.RollbackAsync();
-                            Console.WriteLine(e.Message);
-                            return false;
-                        }
+                        cmd.Parameters.AddWithValue("@QrCodeId", qrCodeId.Value);
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
+
+                await transaction.CommitAsync();
+                return newFormId;
             }
-            catch (Exception ex)
+            catch
             {
-                throw new Exception("Ocorreu um erro ao duplicar o formulário.", ex);
+                await transaction.RollbackAsync();
+                throw;
             }
         }
+
 
 
         public async Task RenameFormAsync(int formId, string newName)
@@ -389,10 +309,17 @@ namespace SimpleFeed.Infrastructure.Repositories
         {
             try
             {
-                var formQuery = @"
-            INSERT INTO forms (client_id, name, is_active, template_id, created_at)
-            VALUES (@Client_Id, @Name, @Is_Active, @Template_id, NOW())
-            RETURNING id;";
+                //Para casos onde o usuário associa o formulário a um QR Code já impresso(Alias do QR Code sera igual ao formDto.FormId)
+                var formQuery = formDto.QrCodeId > 0
+                    ? @"
+                        INSERT INTO forms (id, client_id, name, is_active, template_id, created_at)
+                        VALUES (@Id, @Client_Id, @Name, @Is_Active, @Template_id, NOW())
+                        RETURNING id;"
+                    : @"
+                        INSERT INTO forms (client_id, name, is_active, template_id, created_at)
+                        VALUES (@Client_Id, @Name, @Is_Active, @Template_id, NOW())
+                        RETURNING id;";
+
 
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
@@ -404,12 +331,28 @@ namespace SimpleFeed.Infrastructure.Repositories
                             int formId;
                             using (var formCommand = new NpgsqlCommand(formQuery, connection, transaction))
                             {
+
+                                if (formDto.QrCodeId > 0)
+                                    formCommand.Parameters.AddWithValue("@Id", formDto.QrCodeId);
+
                                 formCommand.Parameters.AddWithValue("@Client_Id", formDto.Client_Id);
                                 formCommand.Parameters.AddWithValue("@Name", formDto.Name);
                                 formCommand.Parameters.AddWithValue("@Is_Active", formDto.Is_Active);
                                 formCommand.Parameters.AddWithValue("@Template_id", formDto.Template_Id == 0 ? DBNull.Value : formDto.Template_Id);
 
                                 formId = (int)await formCommand.ExecuteScalarAsync();
+
+                                // Atualizar QR Code como "usado"
+                                if (formDto.QrCodeId > 0)
+                                {
+                                    var updateQrCodeQuery = "UPDATE qr_code_impressos SET usado = TRUE WHERE id = @QrCodeId;";
+                                    using (var updateCommand = new NpgsqlCommand(updateQrCodeQuery, connection, transaction))
+                                    {
+                                        updateCommand.Parameters.AddWithValue("@QrCodeId", formDto.QrCodeId);
+                                        await updateCommand.ExecuteNonQueryAsync();
+                                    }
+                                }
+
                             }
 
                             var fieldsQuery = @"
@@ -1180,5 +1123,38 @@ namespace SimpleFeed.Infrastructure.Repositories
                 throw new Exception("Ocorreu um erro ao salvar as configurações do QR Code.", ex);
             }
         }
+
+        public async Task<bool> IsQrCodeIdAvailableAsync(int qrCodeId)
+        {
+            try
+            {
+                var query = @"
+                SELECT usado
+                FROM qr_code_impressos
+                WHERE id = @Id";
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = new NpgsqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Id", qrCodeId);
+                        var result = await command.ExecuteScalarAsync();
+
+                        // Se não existir, não está disponível
+                        if (result == null)
+                            return false;
+
+                        // Se existir, está disponível somente se usado = false
+                        return !(bool)result;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao verificar a disponibilidade do QR Code ID.", ex);
+            }
+        }
+
     }
 }

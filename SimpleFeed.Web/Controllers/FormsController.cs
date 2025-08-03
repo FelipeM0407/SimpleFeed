@@ -34,11 +34,19 @@ namespace SimpleFeed.Web.Controllers
         [HttpPost("{formId}/duplicate")]
         public async Task<IActionResult> DuplicateForm(int formId, [FromBody] DuplicateFormDto duplicateFormDto)
         {
-            var newFormId = await _formService.DuplicateFormAsync(formId, duplicateFormDto.FormName);
-            return Ok(new { NewFormId = newFormId });
+            try
+            {
+                var newFormId = await _formService.DuplicateFormAsync(formId, duplicateFormDto.FormName, duplicateFormDto.QrCodeId);
+                return Ok(new { NewFormId = newFormId });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        [HttpPost("{formId}/rename")]
+
+        [HttpPost("{formId}/rename")] 
         public async Task<IActionResult> RenameForm(int formId, [FromBody] RenameFormDto renameFormDto)
         {
             await _formService.RenameFormAsync(formId, renameFormDto.Name);
@@ -55,9 +63,17 @@ namespace SimpleFeed.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateForm([FromBody] CreateFormDto formDto)
         {
-            var formId = await _formService.CreateFormAsync(formDto);
-            return CreatedAtAction(nameof(CreateForm), new { id = formId }, new { FormId = formId });
+            try
+            {
+                var formId = await _formService.CreateFormAsync(formDto);
+                return CreatedAtAction(nameof(CreateForm), new { id = formId }, new { FormId = formId });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
+
 
         [AllowAnonymous]
         [HttpGet("{formId}/structure")]
