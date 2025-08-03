@@ -7,6 +7,7 @@ namespace SimpleFeed.Application.DTOs
 {
     public class DuplicateFormDto
     {
+        public int QrCodeId { get; set; }
         public string FormName { get; set; }
     }
 }

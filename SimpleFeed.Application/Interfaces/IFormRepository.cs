@@ -9,7 +9,7 @@ namespace SimpleFeed.Application.Interfaces
     public interface IFormRepository
     {
         Task<IEnumerable<FormDashboardDto>> GetActiveFormsWithResponsesAsync(int clientId, StatusFormDto statusFormDto);
-        Task<bool> DuplicateFormAsync(int formId, string formName);
+        Task<int> DuplicateFormAsync(int formId, string formName, int? qrCodeId = null);
         Task RenameFormAsync(int formId, string newName);
         Task DeleteFormWithFeedbacksAsync(int formId);
         Task<int> CreateFormAsync(CreateFormDto formDto);
@@ -24,5 +24,6 @@ namespace SimpleFeed.Application.Interfaces
         Task<bool> ActivateFormAsync(int formId);
         Task<FormQRCodeDto> GetQrCodeLogoBase64ByFormIdAsync(int formId);
         Task<bool> SaveQrCodeSettingsAsync(int formId, string? color, string? qrCodeLogoBase64);
+        Task<bool> IsQrCodeIdAvailableAsync(int qrCodeId);
     }
 }

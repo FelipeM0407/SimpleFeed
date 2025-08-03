@@ -25,10 +25,19 @@ namespace SimpleFeed.Application.Services
             return await _formRepository.GetActiveFormsWithResponsesAsync(clientId, statusFormDto);
         }
 
-        public async Task<bool> DuplicateFormAsync(int formId, string formName)
+        public async Task<int> DuplicateFormAsync(int formId, string formName, int? qrCodeId = null)
         {
-            return await _formRepository.DuplicateFormAsync(formId, formName);
+            if (qrCodeId > 0)
+            {
+                bool disponivel = await _formRepository.IsQrCodeIdAvailableAsync(qrCodeId.Value);
+                if (!disponivel)
+                    throw new InvalidOperationException("QR Code ID is not available.");
+            }
+
+
+            return await _formRepository.DuplicateFormAsync(formId, formName, qrCodeId);
         }
+
 
         public async Task RenameFormAsync(int formId, string newName)
         {
@@ -42,6 +51,11 @@ namespace SimpleFeed.Application.Services
 
         public async Task<int> CreateFormAsync(CreateFormDto formDto)
         {
+            if (formDto.QrCodeId > 0 && !await _formRepository.IsQrCodeIdAvailableAsync(formDto.QrCodeId))
+            {
+                throw new InvalidOperationException("QR Code ID is not available.");
+            }
+
             return await _formRepository.CreateFormAsync(formDto);
         }
 
