@@ -158,11 +158,11 @@ namespace SimpleFeed.Infrastructure.Repositories
                 // 1. Copiar os dados do formulário original
                 var insertFormQuery = qrCodeId > 0
                                     ? @"INSERT INTO forms (id, client_id, name, is_active, template_id, created_at)
-               SELECT @NewId, client_id, @FormName, is_active, template_id, NOW()
-               FROM forms WHERE id = @FormId RETURNING id;"
+                               SELECT @NewId, client_id, @FormName, is_active, template_id, NOW()
+                               FROM forms WHERE id = @FormId RETURNING id;"
                                     : @"INSERT INTO forms (client_id, name, is_active, template_id, created_at)
-               SELECT client_id, @FormName, is_active, template_id, NOW()
-               FROM forms WHERE id = @FormId RETURNING id;";
+                               SELECT client_id, @FormName, is_active, template_id, NOW()
+                               FROM forms WHERE id = @FormId RETURNING id;";
 
                 int newFormId;
                 using (var cmd = new NpgsqlCommand(insertFormQuery, connection, transaction))
@@ -210,6 +210,33 @@ namespace SimpleFeed.Infrastructure.Repositories
                     }
                 }
 
+                // 5. Duplicar o registro de form_qrcode se existir para o formId original
+                var checkQrCodeQuery = "SELECT color, qrcode_logo_base64 FROM form_qrcode WHERE form_id = @OriginalFormId;";
+                using (var cmd = new NpgsqlCommand(checkQrCodeQuery, connection, transaction))
+                {
+                    cmd.Parameters.AddWithValue("@OriginalFormId", formId);
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            var color = reader.IsDBNull(0) ? null : reader.GetString(0);
+                            var base64 = reader.IsDBNull(1) ? null : reader.GetString(1);
+                            await reader.CloseAsync();
+
+                            var insertQrCodeQuery = @"
+                        INSERT INTO form_qrcode (form_id, color, qrcode_logo_base64, updatedAt)
+                        VALUES (@NewFormId, @Color, @Base64, NOW());";
+                            using (var insertCmd = new NpgsqlCommand(insertQrCodeQuery, connection, transaction))
+                            {
+                                insertCmd.Parameters.AddWithValue("@NewFormId", newFormId);
+                                insertCmd.Parameters.AddWithValue("@Color", (object?)color ?? DBNull.Value);
+                                insertCmd.Parameters.AddWithValue("@Base64", (object?)base64 ?? DBNull.Value);
+                                await insertCmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                    }
+                }
+
                 await transaction.CommitAsync();
                 return newFormId;
             }
@@ -219,8 +246,6 @@ namespace SimpleFeed.Infrastructure.Repositories
                 throw;
             }
         }
-
-
 
         public async Task RenameFormAsync(int formId, string newName)
         {
